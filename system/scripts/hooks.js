@@ -55,6 +55,19 @@ export default class HooksL5r5e {
         if (disclaimer !== "" && disclaimer !== "l5r5e.global.edge_translation_disclaimer") {
             ui.notifications.info(disclaimer);
         }
+
+        // Find all additional source references that is not the official ones:
+        const references = new Set(Object.keys(CONFIG.l5r5e.source_reference));
+        for(let pack of game.packs) {
+            if(pack.metadata.packageType === "system")
+                continue;
+            const documents = await pack.getDocuments();
+            for(let document of documents) {
+                if(document?.system?.source_reference)
+                    references.add(document.system.source_reference.source);
+            }
+        }
+        game.settings.set(CONFIG.l5r5e.namespace, "all-compendium-references", Array.from(references));
     }
 
     /**
@@ -318,6 +331,19 @@ export default class HooksL5r5e {
         if (message?.rolls?.[0]?.l5r5e?.history) {
             context.blind = true;
         }
+    }
+
+    static updateCompendium(pack, documents, options, userId) {
+        documents.forEach((document) => {
+            const inc_reference = document?.system?.source_reference?.source;
+            if(inc_reference) {
+                const references = game.settings.get(CONFIG.l5r5e.namespace, "all-compendium-references");
+                if(!references.includes(inc_reference)) {
+                    references.push(inc_reference);
+                    game.settings.set(CONFIG.l5r5e.namespace, "all-compendium-references", references);
+                }
+            }
+        })
     }
 
     /**

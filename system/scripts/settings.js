@@ -46,6 +46,17 @@ export const RegisterSettings = function () {
         }
     });
 
+    /* -------------------------------------- */
+    /* Compendium view Settings (GM only)     */
+    /* -------------------------------------- */
+    // This value is updated wheneveer we add a reference and on boot
+    game.settings.register(CONFIG.l5r5e.namespace, "all-compendium-references", {
+        type: new foundry.data.fields.SetField(new foundry.data.fields.StringField()),
+        default: Object.keys(CONFIG.l5r5e.source_reference),
+        config: false,
+        scope: "world",
+    });
+
     /* ------------------------------------ */
     /* Client preferences                   */
     /* ------------------------------------ */
