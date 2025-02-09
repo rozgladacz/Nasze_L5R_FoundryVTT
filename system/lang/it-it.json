@@ -72,6 +72,10 @@
             "unlocked": "Sbloccato",
             "random": "Casuale"
         },
+        "multiselect": {
+            "empty_tag": "<blank>",
+            "placeholder": "Filter Sources"
+        },
         "settings": {
             "wiki": {
                 "custom-compendiums": {

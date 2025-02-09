@@ -72,6 +72,10 @@
             "unlocked": "Unlocked",
             "random": "Random"
         },
+        "multiselect": {
+            "empty_tag": "<blank>",
+            "placeholder": "Filter Sources"
+        },
         "settings": {
             "custom-compendiums": {
                 "title": "Compendiums",

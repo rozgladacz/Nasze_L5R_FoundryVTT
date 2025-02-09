@@ -946,6 +946,28 @@ button {
     }
 }
 
+l5r5e-multi-select {
+    display: grid;
+    grid-template-columns: minmax(auto, 1fr);
+    select {
+        justify-self: center;
+        width: 100%;
+        height: 100%;
+        text-align-last: center;
+    }
+    .input-element-tags {
+        grid-column-start: 1;
+        grid-column-end: span 3;
+    }
+    select {
+        grid-row: 1;
+    }
+    button {
+        grid-row: 1;
+        line-height: 1;
+    }
+}
+
 .autocomplete-wrapper {
     position: relative;
     display: inline-block;
