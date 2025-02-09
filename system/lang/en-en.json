@@ -33,6 +33,20 @@
         "CustomItemsHeight": {
             "Title": "Default items windows height",
             "Hint": "Set the default height for 'Items' windows types (techniques, weapons...), in pixels"
+        },
+        "Compendium": {
+            "HideEmptySourcesFromPlayers": {
+                "Title": "[Compendium] Hide sources without a reference",
+                "Hint": "Basically require a reference to be set in order for players to view the content in compendiums"
+            },
+            "AllowedOfficialSources": {
+                "Title": "[Compendium] Available official resources",
+                "Hint": "Useful if you as a GM want to limit the available official content to only books you own"
+            },
+            "AllowedInOfficialSources": {
+                "Title": "[Compendium] Available inofficial resources",
+                "Hint": "Useful if you have compendiums with custom items mixed with player facing items."
+            }
         }
     },
     "TYPES": {
