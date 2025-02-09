@@ -682,6 +682,7 @@ button {
 }
 
 // Compendium
+.compendium,
 .compendium-list {
     .compendium-pack {
         .pack-title {
@@ -693,6 +694,16 @@ button {
             margin-right: 2rem;
             font-size: 0.75rem;
             color: rgba(240, 240, 225, 0.75);
+        }
+    }
+    .number-filter {
+        .selected {
+            background-image: radial-gradient(closest-side, yellow, transparent);
+        }
+    }
+    .directory-item {
+        .ring-rarity-rank {
+            flex: unset
         }
     }
 }

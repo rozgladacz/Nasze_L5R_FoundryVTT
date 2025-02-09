@@ -688,6 +688,12 @@
             "vain": "Vaine",
             "wary": "Méfiante"
         },
+        "compendium": {
+            "filter_rank": "Show Rank",
+            "filter": {
+                "rank": "Rank",
+            }
+        },
         "source_reference": {
             "core_rulebook": "Core Rulebook",
             "emerald_empire": "Emerald Empire",

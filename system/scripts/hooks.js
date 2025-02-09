@@ -227,47 +227,69 @@ export default class HooksL5r5e {
     static async renderCompendium(app, html, data) {
         if (app.collection.documentName === "Item") {
             const content = await app.collection.getDocuments();
-
-            // Add rank filter for techniques
-            if (
-                content[0].type === "technique" &&
-                !["l5r5e.core-techniques-school", "l5r5e.core-techniques-mastery"].includes(data.collection.collection)
-            ) {
-                const rankFilter = (event, rank) => {
-                    html[0].querySelectorAll(".directory-item").forEach((line) => {
-                        $(line).css("display", rank === 0 || $(line)[0].innerText?.endsWith(rank) ? "flex" : "none");
-                    });
-                };
-                const elmt = html.find(".directory-header");
-                if (elmt.length > 0) {
-                    const div = $('<div class="flexrow"></div>');
-                    for (let rank = 0; rank < 6; rank++) {
-                        const bt = $(`<a>${rank === 0 ? "x" : rank}</a>`);
-                        bt.on("click", (event) => rankFilter(event, rank));
-                        div.append(bt);
-                    }
-                    elmt.append(div);
-                }
+            let filters_to_show = {
+                rank: false
             }
 
-            // Items : add Rarity
-            // Techniques / Peculiarities : add Ring / Rank
-            content.forEach((document) => {
-                if (["weapon", "armor", "item", "peculiarity", "technique", "peculiarity"].includes(document.type)) {
-                    html.find(`[data-document-id="${document.id}"]`).append(
-                        `<i` +
-                            (document.system.ring ? ` class="i_${document.system.ring}"` : ``) +
-                            `>` +
-                            (document.system.rarity
-                                ? `${game.i18n.localize("l5r5e.sheets.rarity")} ${document.system.rarity}`
-                                : "") +
-                            (document.system.rank
-                                ? game.i18n.localize("l5r5e.sheets.rank") + " " + document.system.rank
-                                : "") +
-                            `</i>`
-                    );
+            // Add additional data to the entries to make it faster to lookup.
+            // Add Ring/rank/rarity information
+            content.forEach(async (document) => {
+                const entry = html.find(`[data-document-id="${document.id}"]`);
+                if(document.system?.rank) {
+                    entry.data("rank", document.system.rank);
+                    filters_to_show.rank = true;
+                }
+
+                // Add ring/rank/rarity information on the item in the compendium view
+                if(document.system?.ring || document.system?.rarity || document.system?.ring) {
+                    const ring_rarity_rank = await renderTemplate(`${CONFIG.l5r5e.paths.templates}compendium/ring-rarity-rank.html`, document.system);
+                    entry.append(ring_rarity_rank);
                 }
             });
+
+            // Create the function that will hide/show elements based on various factors
+            const header = html.find(".directory-header");
+            const applyCompendiumFilter = function() {
+                const rank_filter = header.find(".rank-filter").find(".selected").data("rank");
+                $(html).find(".directory-item").each(function() {
+                    let should_show = true;
+
+                    if(rank_filter) {
+                        should_show &= $(this).data("rank") == rank_filter;
+                    }
+
+                    if(should_show)
+                        $(this).show();
+                    else
+                        $(this).hide();
+                });
+            }
+
+            // Rank filter: Add the HTML element and on click handling
+            if (filters_to_show.rank) {
+                header.append(await renderTemplate(`${CONFIG.l5r5e.paths.templates}compendium/rank-filter.html`, {type: "rank", number:[1,2,3,4,5]}));
+                header.find(".rank-filter").children().each(function() {
+                    $(this).on("click", (event, rank=$(this).data("rank")) => {
+                        const already_selected = $(event.target).hasClass("selected");
+                        $(html).find(".rank-filter").children().each(function() {
+                            $(this).removeClass("selected");
+                        });
+
+                        // Only select valid values
+                        if(rank) {
+                            $(event.target).addClass("selected");
+                        }
+                        // we click the same button to unselect
+                        if(already_selected) {
+                            $(event.target).removeClass("selected");
+                        }
+
+                        applyCompendiumFilter();
+                    });
+                });
+            }
+            
+            applyCompendiumFilter();            
             return false;
         }
     }
