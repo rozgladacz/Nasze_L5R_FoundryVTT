@@ -704,7 +704,7 @@ button {
     .l5r5e-tooltip-ct,
     &.l5r5e-tooltip-ct {
         visibility: hidden;
-        min-height: 200px;
+        min-height: fit-content;
         width: 600px;
         height: auto;
         max-height: 100%;
@@ -762,6 +762,12 @@ button {
         .badvalue {
             color: #ab2a00;
         }
+        .reference {
+            display: flex;
+            .page_nr {
+                margin-left: 1ch
+            }
+        }
     }
     .card-header img {
         display: inline-block;
@@ -803,6 +809,13 @@ button {
         width: 20px;
         margin: 0;
         padding: 0;
+    }
+    .reference {
+        display: flex;
+        flex-wrap: nowrap;
+    }
+    .page_nr {
+        margin-left: 1ch;
     }
 }
 
