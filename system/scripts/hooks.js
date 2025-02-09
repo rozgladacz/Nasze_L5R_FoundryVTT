@@ -269,6 +269,17 @@ export default class HooksL5r5e {
                 }
             });
 
+            //Setup what the player cannot see.
+            const officialcontent = game.settings.get(CONFIG.l5r5e.namespace, "compendium-official-content-for-players");
+            const inofficialcontent = game.settings.get(CONFIG.l5r5e.namespace, "compendium-inofficial-content-for-players");
+            let sources_to_mark_as_innaccessable_to_players = game.settings.get(CONFIG.l5r5e.namespace, "all-compendium-references")
+            .filter((element) => {
+                if(CONFIG.l5r5e.source_reference[element])
+                    return !officialcontent.includes(element);
+                else
+                    return inofficialcontent.includes(element);
+            });
+
             // Create the function that will hide/show elements based on various factors
             const header = html.find(".directory-header");
             const applyCompendiumFilter = function() {
@@ -282,6 +293,27 @@ export default class HooksL5r5e {
                         return; // We might have stuff in the compendium view that does not have a source (folders etc.) Ignore those.
 
                     let should_show = true;
+                    if(sources_to_mark_as_innaccessable_to_players.includes(lineSource)) {
+                        if(game.user.isGM) {
+                            should_show &= true;
+                            $(this).addClass("not-for-players");
+                            $(this).attr("data-tooltip", game.i18n.localize("l5r5e.compendium.not_for_players"));
+                        }
+                        else {
+                            should_show &= false;
+                        }
+                    }
+
+                    if(lineSource === "" && game.settings.get(CONFIG.l5r5e.namespace, "compendium-hide-empty-sources-from-players")) {
+                        if(game.user.isGM) {
+                            should_show &= true;
+                            $(this).addClass("not-for-players");
+                            $(this).attr("data-tooltip", game.i18n.localize("l5r5e.compendium.not_for_players"))
+                        }
+                        else {
+                            should_show &= false;
+                        }
+                    }
 
                     if(rank_filter) {
                         should_show &= $(this).data("rank") == rank_filter;
@@ -404,9 +436,26 @@ export default class HooksL5r5e {
                     applyCompendiumFilter();
                 });
 
+                // If gm add a extra button to easily filter the content to see the same stuff as a player
+                if(game.user.isGM) {
+                    const buttonHTML = '<button type="button" class="gm" data-tooltip="Apply player filter">Player filter</button>'
+                    $(buttonHTML).appendTo($(header).find("l5r5e-multi-select")).click(function() {
+                        const filter = game.settings.get(CONFIG.l5r5e.namespace, "all-compendium-references").filter((reference) => {
+                            return !sources_to_mark_as_innaccessable_to_players.includes(reference);
+                        })
 
+                        header.find("l5r5e-multi-select")[0].value = filter.filter((element) => element !== "");
+                    });
+                }
             }
 
+            // This is ugly but if we hide the content too early then it won't be hidden for some reason.
+            // Current guess is that the foundry search filter is doing something.
+            // Adding a delay here so that we hide the content. This will fail on slow computers/network...
+            setTimeout(() => {
+                applyCompendiumFilter();
+            }, 250)
+            
             return false;
         }
     }

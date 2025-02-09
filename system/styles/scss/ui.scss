@@ -718,6 +718,10 @@ button {
         }
     }
 
+    .not-for-players {
+        filter:brightness(0.5);
+    }
+
     l5r5e-multi-select {
         select {
             background: rgba(255, 255, 245, 0.8); // same as the header-search in compendium popout
@@ -995,6 +999,13 @@ l5r5e-multi-select {
         line-height: 1;
     }
 }
+
+l5r5e-multi-select:has( > button.gm) {
+    .input-element-tags {
+        grid-column-end: span 4;
+    }
+}
+
 #client-settings:has( l5r5e-multi-select) {
     .form-fields:has(l5r5e-multi-select) {
         order: 3; // Move the multiselect to be below the title and description for nicer ui

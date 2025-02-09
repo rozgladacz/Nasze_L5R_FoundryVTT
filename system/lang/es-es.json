@@ -704,6 +704,7 @@
         },
         "compendium": {
             "filter_rank": "Show Rank",
+            "not_for_players": "Not shown to players",
             "filter": {
                 "rank": "Rank",
                 "rarity": "Rarity",
