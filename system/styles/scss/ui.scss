@@ -717,6 +717,12 @@ button {
             flex: unset
         }
     }
+
+    l5r5e-multi-select {
+        select {
+            background: rgba(255, 255, 245, 0.8); // same as the header-search in compendium popout
+        }
+    }
 }
 
 // global tooltip

@@ -1,3 +1,5 @@
+import { HTML_l5r5e_MultiSelectElement } from "./misc/l5r5e-multiselect.js";
+
 export default class HooksL5r5e {
     /**
      * Do anything after initialization but before ready
@@ -226,10 +228,12 @@ export default class HooksL5r5e {
      */
     static async renderCompendium(app, html, data) {
         if (app.collection.documentName === "Item") {
-            const content = await app.collection.getDocuments();
+            const content = await app.collection.getDocuments();            
+            let sources_in_this_compendium = new Set([]);
             let filters_to_show = {
                 rank: false,
                 rarity: false,
+                source: false,
                 ring: false,
             }
 
@@ -240,6 +244,12 @@ export default class HooksL5r5e {
                 if(document.system?.rank) {
                     entry.data("rank", document.system.rank);
                     filters_to_show.rank = true;
+                }
+
+                if(document.system?.source_reference) {
+                    sources_in_this_compendium.add(document.system.source_reference.source);
+                    entry.data("source", document.system.source_reference);
+                    filters_to_show.source = true;
                 }
 
                 if(document.system?.ring) {
@@ -263,13 +273,22 @@ export default class HooksL5r5e {
             const header = html.find(".directory-header");
             const applyCompendiumFilter = function() {
                 const rank_filter = header.find(".rank-filter").find(".selected").data("rank");
+                const user_filter = header.find("l5r5e-multi-select").val();
                 const ring_filter = header.find(".ring-filter").find(".selected").data("ring");
                 const rarity_filter = header.find(".rarity-filter").find(".selected").data("rarity");
                 $(html).find(".directory-item").each(function() {
+                    const lineSource = $(this).data("source")?.source;
+                    if(lineSource === null || lineSource === undefined)
+                        return; // We might have stuff in the compendium view that does not have a source (folders etc.) Ignore those.
+
                     let should_show = true;
 
                     if(rank_filter) {
                         should_show &= $(this).data("rank") == rank_filter;
+                    }
+
+                    if(user_filter.length) {
+                        should_show &= user_filter.includes(lineSource);
                     }
 
                     if(ring_filter) {
@@ -354,6 +373,38 @@ export default class HooksL5r5e {
                         applyCompendiumFilter();
                     });
                 });
+            }
+
+            if(filters_to_show.source) {
+                // Setup the source select and add it to the document with change callback
+                const selectable_sources = game.settings.get(CONFIG.l5r5e.namespace, "all-compendium-references")
+                .map((reference) => { 
+                    return { 
+                        disable: !sources_in_this_compendium.has(reference),
+                        source: reference
+                    }
+                })
+                .map((reference) => {
+                    return {
+                        value: reference.source,
+                        label: CONFIG.l5r5e.source_reference[reference.source]?.label ?? reference.source,
+                        translate: true,
+                        group: CONFIG.l5r5e.source_reference[reference.source]?.type.split(",")[0] ?? "Other",
+                        disabled: reference.disable
+                    }
+                });
+
+                const filterSourcesBox = HTML_l5r5e_MultiSelectElement.create({
+                    name: "filter-sources",
+                    options: selectable_sources,
+                    localize: true,
+                });
+                header.append(filterSourcesBox.outerHTML);
+                $("l5r5e-multi-select").on("change", (event) => {
+                    applyCompendiumFilter();
+                });
+
+
             }
 
             return false;
