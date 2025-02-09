@@ -692,6 +692,8 @@
             "filter_rank": "Show Rank",
             "filter": {
                 "rank": "Rank",
+                "rarity": "Rarity",
+                "ring": "Ring"
             }
         },
         "source_reference": {

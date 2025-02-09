@@ -696,9 +696,20 @@ button {
             color: rgba(240, 240, 225, 0.75);
         }
     }
+    .ring-filter,
     .number-filter {
         .selected {
             background-image: radial-gradient(closest-side, yellow, transparent);
+        }
+    }
+
+    .ring-filter {       
+        i.i_earth,
+        i.i_fire,
+        i.i_water,
+        i.i_air,
+        i.i_void {
+            line-height: unset; // do not have it rised up
         }
     }
     .directory-item {

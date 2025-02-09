@@ -228,7 +228,9 @@ export default class HooksL5r5e {
         if (app.collection.documentName === "Item") {
             const content = await app.collection.getDocuments();
             let filters_to_show = {
-                rank: false
+                rank: false,
+                rarity: false,
+                ring: false,
             }
 
             // Add additional data to the entries to make it faster to lookup.
@@ -238,6 +240,16 @@ export default class HooksL5r5e {
                 if(document.system?.rank) {
                     entry.data("rank", document.system.rank);
                     filters_to_show.rank = true;
+                }
+
+                if(document.system?.ring) {
+                    entry.data("ring", document.system.ring);
+                    filters_to_show.ring = true
+                }
+
+                if(document.system?.rarity) {
+                    entry.data("rarity", document.system.rarity);
+                    filters_to_show.rarity = true;
                 }
 
                 // Add ring/rank/rarity information on the item in the compendium view
@@ -251,11 +263,21 @@ export default class HooksL5r5e {
             const header = html.find(".directory-header");
             const applyCompendiumFilter = function() {
                 const rank_filter = header.find(".rank-filter").find(".selected").data("rank");
+                const ring_filter = header.find(".ring-filter").find(".selected").data("ring");
+                const rarity_filter = header.find(".rarity-filter").find(".selected").data("rarity");
                 $(html).find(".directory-item").each(function() {
                     let should_show = true;
 
                     if(rank_filter) {
                         should_show &= $(this).data("rank") == rank_filter;
+                    }
+
+                    if(ring_filter) {
+                        should_show &= $(this).data("ring") == ring_filter
+                    }
+
+                    if(rarity_filter >= 0) {
+                        should_show &= $(this).data("rarity") == rarity_filter
                     }
 
                     if(should_show)
@@ -288,8 +310,52 @@ export default class HooksL5r5e {
                     });
                 });
             }
-            
-            applyCompendiumFilter();            
+
+            if(filters_to_show.rarity) {
+                header.append(await renderTemplate(`${CONFIG.l5r5e.paths.templates}compendium/rank-filter.html`, {type: "rarity", number:[0,1,2,3,4,5,6,7,8,9,10]}));
+                header.find(".rarity-filter").children().each(function() {
+                    $(this).on("click", (event, rarity=$(this).data("rarity")) => {
+                        const already_selected = $(event.target).hasClass("selected");
+                        $(html).find(".rarity-filter").children().each(function() {
+                            $(this).removeClass("selected");
+                        });
+
+                        // Only select valid values
+                        if(Number.isInteger(rarity)) {
+                            $(event.target).addClass("selected");
+                        }
+                        // we click the same button to unselect
+                        if(already_selected) {
+                            $(event.target).removeClass("selected");
+                        }
+
+                        applyCompendiumFilter();
+                    });
+                });
+            }
+
+            if(filters_to_show.ring) {
+                header.append(await renderTemplate(`${CONFIG.l5r5e.paths.templates}compendium/ring-filter.html`));
+                header.find(".ring-filter").children().each(function() {
+                    $(this).on("click", (event, ring=$(this).data("ringid")) => {
+                        const already_selected = $(event.target).hasClass("selected");
+                        $(html).find(".ring-filter").children().each(function() {
+                            $(this).removeClass("selected");
+                        });
+
+                        if(ring) { // Do not keep the "reset" button highlighted
+                            $(event.target).addClass("selected");
+                        }
+                        // we click the same button to unselect
+                        if(already_selected) {
+                            $(event.target).removeClass("selected");
+                        }
+
+                        applyCompendiumFilter();
+                    });
+                });
+            }
+
             return false;
         }
     }
