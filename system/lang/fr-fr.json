@@ -122,7 +122,10 @@
             "description": "Description",
             "bought_at_rank": "Acheté au rang",
             "types": "Types",
-            "book_reference": "Référence",
+            "source_reference": {
+                "reference": "Référence",
+                "page_abbriviation": "p."
+            },
             "value": "Valeur",
             "rarity": "Rareté",
             "quantity": "Quantité",
