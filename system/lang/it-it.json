@@ -680,6 +680,33 @@
             "unenthused": "Non entusiasta",
             "vain": "Vanesio",
             "wary": "Diffidente"
+        },
+        "source_reference": {
+            "core_rulebook": "Core Rulebook",
+            "emerald_empire": "Emerald Empire",
+            "shadowlands": "Shadowlands",
+            "court_of_stones": "Court of Stones",
+            "path_of_waves": "Path of Waves",
+            "celestial_realms": "Celestial Realms",
+            "fields_of_victory": "Fields of Victory",
+            "writ_of_the_wild": "Writ of the Wild",
+            "gm_kit": "Game Master's Kit",
+            "beginner_game": "Beginner Game",
+            "the_mantis_clan": "The Mantis Clan",
+            "mask_of_the_oni": "Mask of the Oni",
+            "winters_embrace": "Winder's Embrace",
+            "sins_of_regret": "Sins of Regret",
+            "wheele_of_judgment": "Wheel of Judgment",
+            "blood_of_the_lioness": "Blood of the Lioness",
+            "imperfect_land": "Imperfect Land",
+            "in_the_palace_of_the_emerald_champion": "In the Palace of the Emerald Champion",
+            "the_highwayman": "The Highwayman",
+            "wedding_at_kyotei_castle": "Wedding at Kyotei Castle",
+            "the_knotted_tails": "The Knotted Tails",
+            "cresting_waves": "Cresting Waves",
+            "deathly_turns": "Deathly Turns",
+            "the_scroll_or_the_blade": "The Scroll or the Blade",
+            "legacies_of_war": "Legacies of War"
         }
     }
 }
