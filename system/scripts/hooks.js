@@ -448,7 +448,9 @@ export default class HooksL5r5e {
                         + game.i18n.localize('l5r5e.multiselect.player_filter_label')
                         + '</button>'
 
-                        const filterPlayerView = game.settings.get(CONFIG.l5r5e.namespace, "all-compendium-references").filter((item) => !unavailableSourceForPlayers.includes(item));
+                        const filterPlayerView = game.settings.get(CONFIG.l5r5e.namespace, "all-compendium-references")
+                            .filter((item) => !unavailableSourceForPlayers.includes(item))
+                            .filter((item) => sources_in_this_compendium.has(item));
                         $(buttonHTML).appendTo($(header).find("l5r5e-multi-select")).click(function() {
                             header.find("l5r5e-multi-select")[0].value = filterPlayerView;
                         });
