@@ -1,0 +1,25 @@
+.application {
+    background: unset;
+    color: var(--color-text-dark-primary);
+    
+    .scrollable {
+        --scroll-margin: 0;
+    }
+    
+    .window-header {
+        background: linear-gradient(
+            $l5r5e-linear-gradient-second,
+            $l5r5e-linear-gradient-second-dark,
+            $l5r5e-linear-gradient-second
+        );
+        .window-title {
+            font-family: $font-secondary;
+            font-size: 1.25rem;
+        }
+    }
+
+    .window-content {
+        background: rgb(255, 250, 230) url("../assets/imgs/bg-l5r.webp") no-repeat;
+        padding: 0.25rem;
+    }
+}

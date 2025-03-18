@@ -982,6 +982,86 @@ button {
     }
 }
 
+#l5r5e-gm-toolbox-v2 {
+    display: flex;
+    background: linear-gradient(
+        $l5r5e-linear-gradient-second,
+        $l5r5e-linear-gradient-second-dark,
+        $l5r5e-linear-gradient-second
+    );
+    border: 1px solid rgb(195, 165, 130);
+    margin: 0.5rem;
+    .window-header {
+        border-bottom: 1px solid rgb(195, 165, 130);
+        background: none; //keep the same background as the toolbox, not the default black opaque
+        .window-title {
+            text-align: center;
+        }
+        
+        h1 {
+            letter-spacing: 0.25rem;
+            line-height: 2.25rem;
+            color: $white-light;
+            padding-top: 1ch;
+        }
+    }
+    .window-content {
+        background: none;
+        padding: 0;
+        .gm-tools-container {
+            color: var(--color-text-primary);
+            display: flex;
+            font-size: 2rem;
+            line-height: 2rem;
+            min-height: 2rem;
+            margin: 0;
+            padding: 0;
+            li {
+                flex: 1;
+                display: flex;
+                margin: 0;
+                padding: 0;
+                border-right: 1px solid #c3a582;
+                cursor: url("../assets/cursors/pointer.webp"), pointer;
+                &:last-child {
+                    margin: 0;
+                    border: 0 none;
+                }
+                :hover {
+                    text-shadow: 0 0 $red;
+                }
+            }
+            .difficulty_hidden {
+                .fa {
+                    width: 3rem;
+                }
+                .difficulty {
+                    flex: 1rem;
+                    width: 2rem;
+                    font-size: 2rem;
+                    text-align: center;
+                    margin: 0;
+                    padding: 0.5rem;
+                }
+            }
+            .fa {
+                padding: 0.5rem;
+            }
+            .fa-bed,
+            .fa-star-half-alt,
+            .fa-table,
+            .fa-podcast {
+                width: 100%;
+                padding: 0.5rem;
+            }
+        }
+    }
+    // hide "search anywhere" draggable icon
+    .window-draggable-handle {
+        display: none;
+    }
+}
+
 l5r5e-multi-select {
     display: grid;
     grid-template-columns: minmax(auto, 1fr);
