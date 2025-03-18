@@ -399,7 +399,7 @@ export class GmMonitor extends FormApplication {
             .join(", ");
 
         // *** Template ***
-        return renderTemplate(`${CONFIG.l5r5e.paths.templates}gm/monitor-tooltips/global.html`, {
+        return renderTemplate(`${CONFIG.l5r5e.paths.templates}gm/monitor/tooltips/global.html`, {
             actorData: actorData,
             advantages: adv,
             disadvantages: dis,
@@ -418,7 +418,7 @@ export class GmMonitor extends FormApplication {
         const actorData = (await actor.sheet?.getData()?.data) || actor;
 
         // *** Template ***
-        return renderTemplate(`${CONFIG.l5r5e.paths.templates}gm/monitor-tooltips/global-armies.html`, {
+        return renderTemplate(`${CONFIG.l5r5e.paths.templates}gm/monitor/tooltips/global-armies.html`, {
             actorData: actorData,
         });
     }
@@ -450,7 +450,7 @@ export class GmMonitor extends FormApplication {
             .map((e) => display(e));
 
         // *** Template ***
-        return renderTemplate(`${CONFIG.l5r5e.paths.templates}gm/monitor-tooltips/weapons.html`, {
+        return renderTemplate(`${CONFIG.l5r5e.paths.templates}gm/monitor/tooltips/weapons.html`, {
             readied,
             sheathed,
         });
@@ -474,7 +474,7 @@ export class GmMonitor extends FormApplication {
             );
 
         // *** Template ***
-        return renderTemplate(`${CONFIG.l5r5e.paths.templates}gm/monitor-tooltips/armors.html`, {
+        return renderTemplate(`${CONFIG.l5r5e.paths.templates}gm/monitor/tooltips/armors.html`, {
             armors,
         });
     }
