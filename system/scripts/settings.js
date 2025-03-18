@@ -226,6 +226,11 @@ export const RegisterSettings = function () {
             groups: ["ApplicationV2"],
             options: [
                 {
+                    label: "Gm Monitor",
+                    value: "appv2_gm_monitor",
+                    group: "ApplicationV2"
+                },
+                {
                     label: "Gm Toolbox",
                     value: "appv2_gm_toolbox",
                     group: "ApplicationV2"
