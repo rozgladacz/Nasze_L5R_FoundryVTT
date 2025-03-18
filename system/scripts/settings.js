@@ -217,6 +217,28 @@ export const RegisterSettings = function () {
     });
 
     /* ------------------------------------ */
+    /* Beta Settings (GM only)                 */
+    /* ------------------------------------ */
+    game.settings.register(CONFIG.l5r5e.namespace, "beta-features", {
+        name: "Current features in Beta",
+        hint: "[No Warranties] This can break your game. These features are in beta and should only be enabled for new worlds and testing purposes.",
+        type: new L5r5eSetField( {
+            groups: ["ApplicationV2"],
+            options: [
+                {
+                    label: "Gm Toolbox",
+                    value: "appv2_gm_toolbox",
+                    group: "ApplicationV2"
+                }
+            ]
+        }),
+        default: [],
+        config: true,
+        requiresReload: true,
+        scope: "world",
+    });
+
+    /* ------------------------------------ */
     /* GM Monitor windows (GM only)         */
     /* ------------------------------------ */
     game.settings.register(CONFIG.l5r5e.namespace, "gm-monitor-actors", {
