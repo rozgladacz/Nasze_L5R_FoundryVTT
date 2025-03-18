@@ -43,7 +43,10 @@ export default class HooksL5r5e {
 
         // Settings TN and EncounterType
         if (game.user.isGM) {
-            new game.l5r5e.GmToolbox().render(true);
+            if(game.settings.get(CONFIG.l5r5e.namespace, "beta-features").includes("appv2_gm_toolbox"))
+                new game.l5r5e.GmToolboxV2().render(true);
+            else
+                new game.l5r5e.GmToolbox().render(true);
         }
 
         // ***** UI *****
@@ -543,5 +546,12 @@ export default class HooksL5r5e {
             ) || await Macro.create(macroData);
 
         await game.user.assignHotbarMacro(macro, slot);
+    }
+
+    static async createCombatant(document, options, userId) {
+
+        console.log(document, options, userId);
+
+        new game.l5r5e.CombatActions().render(true);
     }
 }
