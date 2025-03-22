@@ -52,18 +52,8 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
         super();
         this.#hooks.push({
             hook: "updateSetting",
-            fn: Hooks.on("updateSetting", (setting) => this.onUpdateSetting(setting))
+            fn: Hooks.on("updateSetting", (setting) => this.#onUpdateSetting(setting))
         });
-    }
-
-    /**
-     * Refresh data (used from socket)
-     */
-    async refresh() {
-        if (!game.user.isGM) {
-            return;
-        }
-        this.render(false);
     }
 
     /** @override ApplicationV2*/
@@ -75,9 +65,9 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-       * The ApplicationV2 always adds the close button so just remove it when redering the frame
-       * @override ApplicationV2
-       */
+     * The ApplicationV2 always adds the close button so just remove it when redering the frame
+     * @override ApplicationV2
+     */
     async _renderFrame(options) {
         const frame = await super._renderFrame(options);
         $(frame).find('button[data-action="close"]').remove();
@@ -85,9 +75,9 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-       * The ApplicationV2 always adds the close button so just remove it when redering the frame
-       * @override ApplicationV2
-       */
+     * The ApplicationV2 always adds the close button so just remove it when redering the frame
+     * @override ApplicationV2
+     */
     _onFirstRender(context, options) {
         const x = $(window).width();
         const y = $(window).height();
@@ -96,11 +86,21 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-       * The GM Toolbox should not be removed when toggling the main menu with the esc key etc.
-       * @override ApplicationV2
-       */
+     * The GM Toolbox should not be removed when toggling the main menu with the esc key etc.
+     * @override ApplicationV2
+     */
     async close(options) {
         return;
+    }
+
+    /**
+     * Refresh data (used from socket)
+     */
+    async refresh() {
+        if (!game.user.isGM) {
+            return;
+        }
+        this.render(false);
     }
 
     static #openGmMonitor() {
@@ -240,7 +240,7 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
     /**
      * @param {Setting} setting The setting that is being updated
      */
-    async onUpdateSetting(setting) {
+    async #onUpdateSetting(setting) {
         switch(setting.key) {
             case "l5r5e.initiative-difficulty-value":
             case "l5r5e.initiative-difficulty-hidden":

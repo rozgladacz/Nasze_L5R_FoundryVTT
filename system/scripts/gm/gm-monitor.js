@@ -110,6 +110,157 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
         this.#initialize();
     }
 
+    /** @override ApplicationV2 */
+    async _preClose(options) {
+        await super._preClose(options);
+        options.animate = false;
+
+        for (const hook of this.#hooks) {
+            Hooks.off(hook.hook, hook.fn);
+        }
+    }
+
+    /** @override ApplicationV2 */
+    async _onRender(context, options) {
+        await super._onRender(context, options);
+
+        // Todo: Move this to common l5r5e application v2 
+        game.l5r5e.HelpersL5r5e.commonListeners($(this.element));
+
+        this.#dragDrop = new DragDrop({
+          dragSelector: null,
+          dropSelector: null,
+          callbacks: {
+            drop: this._onDrop.bind(this)
+          }
+        }).bind(this.element);
+
+        // Tooltips
+        game.l5r5e.HelpersL5r5e.popupManager($(this.element).find(".actor-infos-control"), async (event) => {
+            const type = $(event.currentTarget).data("type");
+            if (!type) {
+                return;
+            }
+            if (type === "text") {
+                return $(event.currentTarget).data("text");
+            }
+
+            const uuid = $(event.currentTarget).data("actor-uuid");
+            if (!uuid) {
+                return;
+            }
+            const actor = this.context.actors.find((actor) => actor.uuid === uuid);
+            if (!actor) {
+                return;
+            }
+
+            switch (type) {
+                case "armors":
+                    return this.#getTooltipArmors(actor);
+                case "weapons":
+                    return this.#getTooltipWeapons(actor);
+                case "global":
+                    return actor.isArmy ? this.#getTooltipArmiesGlobal(actor) : this.#getTooltipGlobal(actor);
+            }
+        });
+    }
+
+    /** @override ApplicationV2 */
+    async _prepareContext() {
+        return {
+            tabs: this._getTabs(),
+        }
+    }
+
+    /**
+     * @param {string} partId                         The part being rendered
+     * @param {ApplicationRenderContext} context      Shared context provided by _prepareContext
+     * @returns {Promise<ApplicationRenderContext>}   Context data for a specific part
+     * 
+     * @override HandlebarsApplicationMixin
+     */
+    async _preparePartContext(partId, context) {
+        switch(partId) {
+            case "character":
+                context.characters = this.context.actors.filter((actor) => !actor.isArmy); 
+                break;
+            case "army":
+                context.armies = this.context.actors.filter((actor) => actor.isArmy);
+                break;
+        }
+        return context;
+    }
+
+    /**
+     * Prepare an array of form header tabs.
+     * @returns {Record<string, Partial<ApplicationTab>>}
+     */
+    _getTabs() {
+        const tabs = {
+            character: { id: "character", group: "view", icon: "fa-solid fa-tag", label: "REGION.SECTIONS.identity" },
+            army: { id: "army", group: "view", icon: "fa-solid fa-shapes", label: "REGION.SECTIONS.shapes" },
+        }
+        for (const v of Object.values(tabs)) {
+            v.active = this.tabGroups[v.group] === v.id;
+            v.cssClass = v.active ? "active" : "";
+        }
+        return tabs;
+    }
+
+    /**
+     * Handle dropped data on the Actor sheet
+     * @param {DragEvent} event       The originating DragEvent
+     */
+    async _onDrop(event) {
+
+        if (!this.options.window.editable)
+            return;
+
+        const json = event.dataTransfer.getData("text/plain");
+        if (!json) {
+            return;
+        }
+
+        const data = JSON.parse(json);
+        if (!data || data.type !== "Actor" || !data.uuid || !!this.context.actors.find((a) => a.uuid === data.uuid)) {
+            return;
+        }
+
+        const actor = fromUuidSync(data.uuid);
+        if (!actor) {
+            return;
+        }
+
+        // Switch view to current character type
+        if(actor.isArmy) {
+            this.changeTab("army", "view");
+        }
+        else {
+            this.changeTab("character", "view");
+        }
+
+        this.context.actors.push(actor);
+
+        return this._saveActorsIds();
+    }
+
+    /** required for updating via our socket implementation game.l5r5e.HelpersL5r5e.refreshLocalAndSocket("l5r5e-gm-monitor")*/
+    async refresh() {
+        this.render();
+    }
+
+    /**
+     * Save the actors ids in setting
+     * @private
+     */
+    async _saveActorsIds() {
+        return game.settings.set(
+            CONFIG.l5r5e.namespace,
+            "gm-monitor-actors",
+            this.context.actors.map((a) => a.uuid)
+        );
+    }
+
     #initialize() {
         let actors;
         const uuidList = game.settings.get(CONFIG.l5r5e.namespace, "gm-monitor-actors");
@@ -368,66 +519,6 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
         return this._saveActorsIds();
     }
 
-    /** @override ApplicationV2 */
-    async _preClose(options) {
-        await super._preClose(options);
-        options.animate = false;
-
-        for (const hook of this.#hooks) {
-            Hooks.off(hook.hook, hook.fn);
-        }
-    }
-
-    /** required for updating via our socket implementation game.l5r5e.HelpersL5r5e.refreshLocalAndSocket("l5r5e-gm-monitor-v2")*/
-    async refresh() {
-        this.render();
-    }
-
-    /** @override ApplicationV2 */
-    async _onRender(context, options) {
-        await super._onRender(context, options);
-
-        // Todo: Move this to common l5r5e application v2 
-        game.l5r5e.HelpersL5r5e.commonListeners($(this.element));
-
-        this.#dragDrop = new DragDrop({
-          dragSelector: null,
-          dropSelector: null,
-          callbacks: {
-            drop: this._onDrop.bind(this)
-          }
-        }).bind(this.element);
-
-        // Tooltips
-        game.l5r5e.HelpersL5r5e.popupManager($(this.element).find(".actor-infos-control"), async (event) => {
-            const type = $(event.currentTarget).data("type");
-            if (!type) {
-                return;
-            }
-            if (type === "text") {
-                return $(event.currentTarget).data("text");
-            }
-
-            const uuid = $(event.currentTarget).data("actor-uuid");
-            if (!uuid) {
-                return;
-            }
-            const actor = this.context.actors.find((actor) => actor.uuid === uuid);
-            if (!actor) {
-                return;
-            }
-
-            switch (type) {
-                case "armors":
-                    return this.#getTooltipArmors(actor);
-                case "weapons":
-                    return this.#getTooltipWeapons(actor);
-                case "global":
-                    return actor.isArmy ? this.#getTooltipArmiesGlobal(actor) : this.#getTooltipGlobal(actor);
-            }
-        });
-      }
-
     /**
      * Get armors information for this actor
      * @param {ActorL5r5e} actor
@@ -516,111 +607,19 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
         });
     }
 
-        /**
+    /**
      * Get tooltips information for this army
      * @param {ActorL5r5e} actor
      * @return {string}
      * @private
      */
-        async #getTooltipArmiesGlobal(actor) {
-            const actorData = (await actor.sheet?.getData()?.data) || actor;
-    
-            // *** Template ***
-            return renderTemplate(`${CONFIG.l5r5e.paths.templates}gm/monitor/tooltips/global-armies.html`, {
-                actorData: actorData,
-            });
-        }
+    async #getTooltipArmiesGlobal(actor) {
+        const actorData = (await actor.sheet?.getData()?.data) || actor;
 
-    /**
-    * Handle dropped data on the Actor sheet
-    * @param {DragEvent} event       The originating DragEvent
-    * @override ApplicationV2
-    */
-    async _onDrop(event) {
-
-        if (!this.options.window.editable)
-            return;
-
-        const json = event.dataTransfer.getData("text/plain");
-        if (!json) {
-            return;
-        }
-
-        const data = JSON.parse(json);
-        if (!data || data.type !== "Actor" || !data.uuid || !!this.context.actors.find((a) => a.uuid === data.uuid)) {
-            return;
-        }
-
-        const actor = fromUuidSync(data.uuid);
-        if (!actor) {
-            return;
-        }
-
-        // Switch view to current character type
-        if(actor.isArmy) {
-            this.changeTab("army", "view");
-        }
-        else {
-            this.changeTab("character", "view");
-        }
-
-        this.context.actors.push(actor);
-
-        return this._saveActorsIds();
-    }
-
-    /**
-     * Save the actors ids in setting
-     * @private
-     */
-    async _saveActorsIds() {
-        return game.settings.set(
-            CONFIG.l5r5e.namespace,
-            "gm-monitor-actors",
-            this.context.actors.map((a) => a.uuid)
-        );
-    }
-
-    /** @override ApplicationV2 */
-    async _prepareContext() {
-        return {
-            tabs: this._getTabs(),
-        }
-    }
-
-    /**
-     * @param {string} partId                         The part being rendered
-     * @param {ApplicationRenderContext} context      Shared context provided by _prepareContext
-     * @returns {Promise<ApplicationRenderContext>}   Context data for a specific part
-     * 
-     * @override HandlebarsApplicationMixin
-    */
-    async _preparePartContext(partId, context) {
-        switch(partId) {
-            case "character":
-                context.characters = this.context.actors.filter((actor) => !actor.isArmy); 
-                break;
-            case "army":
-                context.armies = this.context.actors.filter((actor) => actor.isArmy);
-                break;
-        }
-        return context;
-    }
-
-    /**
-     * Prepare an array of form header tabs.
-     * @returns {Record<string, Partial<ApplicationTab>>}
-     */
-    _getTabs() {
-        const tabs = {
-            character: { id: "character", group: "view", icon: "fa-solid fa-tag", label: "REGION.SECTIONS.identity" },
-            army: { id: "army", group: "view", icon: "fa-solid fa-shapes", label: "REGION.SECTIONS.shapes" },
-        }
-        for (const v of Object.values(tabs)) {
-            v.active = this.tabGroups[v.group] === v.id;
-            v.cssClass = v.active ? "active" : "";
-        }
-        return tabs;
+        // *** Template ***
+        return renderTemplate(`${CONFIG.l5r5e.paths.templates}gm/monitor/tooltips/global-armies.html`, {
+            actorData: actorData,
+        });
     }
 
     /**
