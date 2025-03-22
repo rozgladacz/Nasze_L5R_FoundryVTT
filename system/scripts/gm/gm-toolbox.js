@@ -104,11 +104,11 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static #openGmMonitor() {
-        const app = foundry.applications.instances.get("l5r5e-gm-monitor-v2")
+        const app = foundry.applications.instances.get("l5r5e-gm-monitor")
         if (app) {
             app.close();
         } else {
-            new game.l5r5e.GmMonitorV2().render(true);
+            new game.l5r5e.GmMonitor().render(true);
         }
     }
 
