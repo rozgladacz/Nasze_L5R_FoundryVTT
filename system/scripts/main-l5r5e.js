@@ -41,7 +41,6 @@ import { BaseJournalSheetL5r5e } from "./journals/base-journal-sheet.js";
 // Specific
 import { MigrationL5r5e } from "./migration.js";
 import { GmToolbox } from "./gm/gm-toolbox.js";
-import { GmToolboxV2 } from "./gm/gm-toolbox-v2.js";
 import { GmMonitor } from "./gm/gm-monitor.js";
 import { GmMonitorV2 } from "./gm/gm-monitor-v2.js";
 import { Storage } from "./storage.js";
@@ -96,7 +95,6 @@ Hooks.once("init", async () => {
         DicePickerDialog,
         RollnKeepDialog,
         GmToolbox,
-        GmToolboxV2,
         GmMonitor,
         GmMonitorV2,
         HelpDialog,

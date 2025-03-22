@@ -43,7 +43,7 @@ export default class HooksL5r5e {
 
         // Settings TN and EncounterType
         if (game.user.isGM) {
-                new game.l5r5e.GmToolboxV2().render(true);
+                new game.l5r5e.GmToolbox().render(true);
         }
 
         // ***** UI *****

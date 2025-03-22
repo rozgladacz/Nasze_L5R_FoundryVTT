@@ -415,7 +415,7 @@ export class HelpersL5r5e {
      * Notify Applications using Difficulty settings that the values was changed
      */
     static notifyDifficultyChange() {
-        ["l5r5e-dice-picker-dialog", "l5r5e-gm-toolbox"].forEach((appId) => {
+        ["l5r5e-dice-picker-dialog"].forEach((appId) => {
             const app = this.getApplication(appId);
             if (app && typeof app.refresh === "function") {
                 app.refresh();
