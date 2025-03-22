@@ -132,8 +132,8 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static #onToggleHideDifficulty() {
-        const hidden_setting = game.settings.get(CONFIG.l5r5e.namespace, "initiative-difficulty-hidden")
-        game.settings.set(CONFIG.l5r5e.namespace, "initiative-difficulty-hidden", !hidden_setting);
+        const hiddenSetting = game.settings.get(CONFIG.l5r5e.namespace, "initiative-difficulty-hidden")
+        game.settings.set(CONFIG.l5r5e.namespace, "initiative-difficulty-hidden", !hiddenSetting);
     }
 
     /**
@@ -142,8 +142,9 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
      * @returns {Boolean}
      */
     static #updatableCharacter(allActors, actor) {
-        if (!actor.isCharacterType)
+        if (!actor.isCharacterType) {
             return false;
+        }
 
         if (allActors) {
             return true;
@@ -241,7 +242,7 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {Setting} setting The setting that is being updated
      */
     async #onUpdateSetting(setting) {
-        switch(setting.key) {
+        switch (setting.key) {
             case "l5r5e.initiative-difficulty-value":
             case "l5r5e.initiative-difficulty-hidden":
                 this.render(false);

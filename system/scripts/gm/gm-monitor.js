@@ -131,7 +131,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
           dragSelector: null,
           dropSelector: null,
           callbacks: {
-            drop: this._onDrop.bind(this)
+            drop: this.#onDrop.bind(this)
           }
         }).bind(this.element);
 
@@ -168,7 +168,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
     /** @override ApplicationV2 */
     async _prepareContext() {
         return {
-            tabs: this._getTabs(),
+            tabs: this.getTabs(),
         }
     }
 
@@ -180,7 +180,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      * @override HandlebarsApplicationMixin
      */
     async _preparePartContext(partId, context) {
-        switch(partId) {
+        switch (partId) {
             case "character":
                 context.characters = this.context.actors.filter((actor) => !actor.isArmy); 
                 break;
@@ -195,7 +195,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      * Prepare an array of form header tabs.
      * @returns {Record<string, Partial<ApplicationTab>>}
      */
-    _getTabs() {
+    getTabs() {
         const tabs = {
             character: { id: "character", group: "view", icon: "fa-solid fa-tag", label: "REGION.SECTIONS.identity" },
             army: { id: "army", group: "view", icon: "fa-solid fa-shapes", label: "REGION.SECTIONS.shapes" },
@@ -211,10 +211,11 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      * Handle dropped data on the Actor sheet
      * @param {DragEvent} event       The originating DragEvent
      */
-    async _onDrop(event) {
+    async #onDrop(event) {
 
-        if (!this.options.window.editable)
+        if (!this.options.window.editable) {
             return;
+        }
 
         const json = event.dataTransfer.getData("text/plain");
         if (!json) {
@@ -232,7 +233,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // Switch view to current character type
-        if(actor.isArmy) {
+        if (actor.isArmy) {
             this.changeTab("army", "view");
         }
         else {
@@ -241,7 +242,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
 
         this.context.actors.push(actor);
 
-        return this._saveActorsIds();
+        return this.saveActorsIds();
     }
 
     /** required for updating via our socket implementation game.l5r5e.HelpersL5r5e.refreshLocalAndSocket("l5r5e-gm-monitor")*/
@@ -253,7 +254,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      * Save the actors ids in setting
      * @private
      */
-    async _saveActorsIds() {
+    async saveActorsIds() {
         return game.settings.set(
             CONFIG.l5r5e.namespace,
             "gm-monitor-actors",
@@ -279,7 +280,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
         } else {
             // If empty add pc with owner
             actors = game.actors.filter((actor) => actor.type === "character" && actor.hasPlayerOwnerActive);
-            this._saveActorsIds();
+            this.saveActorsIds();
         }
 
         // Sort by name asc
@@ -303,7 +304,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      * Switch between the available views in sequence
      */
     static #rotateViewTab() {
-        const tabArray = Object.values(this._getTabs());
+        const tabArray = Object.values(this.getTabs());
         const activeTabIndex = tabArray.findIndex((tab) => tab.active);
         const nextTabIndex = activeTabIndex + 1 < tabArray.length ? activeTabIndex + 1 : 0;
         this.changeTab(tabArray[nextTabIndex].id, tabArray[nextTabIndex].group)
@@ -326,7 +327,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
                 ...this.context.actors,
                 ...actors2Add
             ];
-            this._saveActorsIds();
+            this.saveActorsIds();
         }
     }
 
@@ -336,7 +337,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {Int} whichButton  The type of click made
      */
     static #newValue(baseValue, whichButton) {
-        switch(whichButton) {
+        switch (whichButton) {
             case 0:   //Left click
                 return Math.max(0, baseValue + 1);
             case 1:   //Middle click
@@ -369,8 +370,9 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     static async #modifyCasualties(event, target) {
         const {isValid, actor} = await GmMonitor.#getActorValidated(target);
-        if(!isValid)
+        if (!isValid) {
             return;
+        }
 
         const casualties_strength = actor.system.battle_readiness.casualties_strength.value;
         return actor.update({
@@ -390,8 +392,9 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     static async #modifyPanic(event, target) {
         const {isValid, actor} = await GmMonitor.#getActorValidated(target);
-        if(!isValid)
+        if (!isValid) {
             return;
+        }
 
         const panic_discipline = actor.system.battle_readiness.panic_discipline.value;
         return actor.update({
@@ -411,8 +414,9 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     static async #togglePrepared(event, target) {
         const {isValid, actor} = await GmMonitor.#getActorValidated(target);
-        if(!isValid)
+        if (!isValid) {
             return;
+        }
 
         return actor.update({
             system: {
@@ -427,8 +431,9 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     static async #changeStance(event, target) {
         const {isValid, actor} = await GmMonitor.#getActorValidated(target);
-        if(!isValid)
+        if (!isValid) {
             return;
+        }
 
         let stanceIdx = CONFIG.l5r5e.stances.findIndex((stance) => stance === actor.system.stance) + (event.button === 0 ? 1 : -1);
         if (stanceIdx < 0) {
@@ -450,8 +455,9 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     static async #modifyFatigue(event, target) {
         const {isValid, actor} = await GmMonitor.#getActorValidated(target);
-        if(!isValid)
+        if (!isValid) {
             return;
+        }
 
         const fatigue = actor.system.fatigue.value;        
         return actor.update({
@@ -469,8 +475,9 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     static async #modifyStrife(event, target) {
         const {isValid, actor} = await GmMonitor.#getActorValidated(target);
-        if(!isValid)
+        if (!isValid) {
             return;
+        }
 
         const strife = actor.system.strife.value; 
         return actor.update({
@@ -488,8 +495,9 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     static async #modifyVoidPoint(event, target) {
         const {isValid, actor} = await GmMonitor.#getActorValidated(target);
-        if(!isValid)
+        if (!isValid) {
             return;
+        }
 
         const void_points = actor.system.void_points.value; 
         const void_points_max = actor.system.void_points.max;
@@ -516,7 +524,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         this.context.actors = this.context.actors.filter((actor) => actor.uuid !== uuid);
-        return this._saveActorsIds();
+        return this.saveActorsIds();
     }
 
     /**
@@ -626,7 +634,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {ActorL5r5e} actor The actor that is being updated
      */
     #onUpdateActor(actor) {
-        if(this.context.actors.includes(actor)) {
+        if (this.context.actors.includes(actor)) {
             this.render(false);
         }
     }
@@ -635,7 +643,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {Setting} setting The setting that is being updated
      */
     #onUpdateSetting(setting) {
-        switch(setting.key) {
+        switch (setting.key) {
             case "l5r5e.gm-monitor-actors":
                 this.render(false);
                 break;
