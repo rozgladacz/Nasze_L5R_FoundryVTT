@@ -237,7 +237,7 @@ export const RegisterSettings = function () {
                 }
             ]
         }),
-        default: [],
+        default: ["appv2_gm_monitor", "appv2_gm_toolbox"],
         config: true,
         requiresReload: true,
         scope: "world",
