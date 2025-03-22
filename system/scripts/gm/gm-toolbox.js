@@ -161,21 +161,11 @@ export class GmToolbox extends FormApplication {
             event.preventDefault();
             event.stopPropagation();
 
-            if(game.settings.get(CONFIG.l5r5e.namespace, "beta-features").includes("appv2_gm_monitor")) {
-                const app = game.l5r5e.HelpersL5r55.getApplication("l5r5e-gm-monitor-v2")
-                if (app) {
-                    app.close();
-                } else {
-                    new game.l5r5e.GmMonitorV2().render(true);
-                }
-            }
-            else {
-                const app = game.l5r5e.HelpersL5r5e.getApplication("l5r5e-gm-monitor");
-                if (app) {
-                    app.close();
-                } else {
-                    new game.l5r5e.GmMonitor().render(true);
-                }
+            const app = game.l5r5e.HelpersL5r55.getApplication("l5r5e-gm-monitor-v2")
+            if (app) {
+                app.close();
+            } else {
+                new game.l5r5e.GmMonitorV2().render(true);
             }
         });
     }
