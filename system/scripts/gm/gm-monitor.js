@@ -180,40 +180,36 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * Helper for reusing some code related to updating actors
+     * Update baseValue based on the type of event
+     * @param {Int} baseValue   The Base value we can to modify
+     * @param {Int} whichButton  The type of click made
      */
-    static #Helper = {
-        /**
-         * Update baseValue based on the type of event
-         * @param {Int} baseValue   The Base value we can to modify
-         * @param {Int} whichButton  The type of click made
-         */
-        newValue(baseValue, whichButton) {
-            switch(whichButton) {
-                case 0:   //Left click
-                    return Math.max(0, baseValue + 1);
-                case 1:   //Middle click
-                    return 0;
-                case 2:   //Right click
-                    return Math.max(0, baseValue - 1); 
-            }
-        },
-        /**
-         * @param {HTMLElement} target Html target to get actor information from
-         */
-        async getActorValidated(target) {
-            const uuid = $(target).data("actor-uuid");
-            if (!uuid) {
-                console.warn("L5R5E | GMM | actor uuid not set", type);
-                return {isValid: false, actor: null};
-            }
-            const actor = await fromUuid(uuid);
-            if (!actor) {
-                console.warn("L5R5E | GMM | Actor not found", type);
-                return {isValid: false, actor: null};
-            }
-            return {isValid:true, actor: actor};
+    static #newValue(baseValue, whichButton) {
+        switch(whichButton) {
+            case 0:   //Left click
+                return Math.max(0, baseValue + 1);
+            case 1:   //Middle click
+                return 0;
+            case 2:   //Right click
+                return Math.max(0, baseValue - 1); 
         }
+    }
+
+    /**
+     * @param {HTMLElement} target Html target to get actor information from
+     */
+    static async #getActorValidated(target) {
+        const uuid = $(target).data("actor-uuid");
+        if (!uuid) {
+            console.warn("L5R5E | GMM | actor uuid not set", type);
+            return {isValid: false, actor: null};
+        }
+        const actor = await fromUuid(uuid);
+        if (!actor) {
+            console.warn("L5R5E | GMM | Actor not found", type);
+            return {isValid: false, actor: null};
+        }
+        return {isValid:true, actor: actor};
     }
 
     /**
@@ -221,7 +217,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {HTMLElement} target      The capturing HTML element which defined a [data-action]
      */
     static async #modifyCasualties(event, target) {
-        const {isValid, actor} = await GmMonitor.#Helper.getActorValidated(target);
+        const {isValid, actor} = await GmMonitor.#getActorValidated(target);
         if(!isValid)
             return;
 
@@ -230,7 +226,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
             system: {
                 battle_readiness: {
                     casualties_strength: {
-                        value: GmMonitor.#Helper.newValue(casualties_strength, event.button),
+                        value: GmMonitor.#newValue(casualties_strength, event.button),
                     }
                 },
             },
@@ -242,7 +238,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {HTMLElement} target      The capturing HTML element which defined a [data-action]
      */
     static async #modifyPanic(event, target) {
-        const {isValid, actor} = await GmMonitor.#Helper.getActorValidated(target);
+        const {isValid, actor} = await GmMonitor.#getActorValidated(target);
         if(!isValid)
             return;
 
@@ -251,7 +247,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
             system: {
                 battle_readiness: {
                     panic_discipline: {
-                        value: GmMonitor.#Helper.newValue(panic_discipline, event.button),
+                        value: GmMonitor.#newValue(panic_discipline, event.button),
                     }
                 },
             },
@@ -263,7 +259,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {HTMLElement} target      The capturing HTML element which defined a [data-action]
      */
     static async #togglePrepared(event, target) {
-        const {isValid, actor} = await GmMonitor.#Helper.getActorValidated(target);
+        const {isValid, actor} = await GmMonitor.#getActorValidated(target);
         if(!isValid)
             return;
 
@@ -279,7 +275,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {HTMLElement} target      The capturing HTML element which defined a [data-action]
      */
     static async #changeStance(event, target) {
-        const {isValid, actor} = await GmMonitor.#Helper.getActorValidated(target);
+        const {isValid, actor} = await GmMonitor.#getActorValidated(target);
         if(!isValid)
             return;
 
@@ -302,7 +298,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {HTMLElement} target      The capturing HTML element which defined a [data-action]
      */
     static async #modifyFatigue(event, target) {
-        const {isValid, actor} = await GmMonitor.#Helper.getActorValidated(target);
+        const {isValid, actor} = await GmMonitor.#getActorValidated(target);
         if(!isValid)
             return;
 
@@ -310,7 +306,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
         return actor.update({
             system: {
                 fatigue: {
-                    value: GmMonitor.#Helper.newValue(fatigue, event.button)
+                    value: GmMonitor.#newValue(fatigue, event.button)
                 }    
             }
         });
@@ -321,7 +317,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {HTMLElement} target      The capturing HTML element which defined a [data-action]
      */
     static async #modifyStrife(event, target) {
-        const {isValid, actor} = await GmMonitor.#Helper.getActorValidated(target);
+        const {isValid, actor} = await GmMonitor.#getActorValidated(target);
         if(!isValid)
             return;
 
@@ -329,7 +325,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
         return actor.update({
             system: {
                 strife: {
-                    value: GmMonitor.#Helper.newValue(strife, event.button),
+                    value: GmMonitor.#newValue(strife, event.button),
                 },
             },
         });
@@ -340,7 +336,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {HTMLElement} target      The capturing HTML element which defined a [data-action]
      */
     static async #modifyVoidPoint(event, target) {
-        const {isValid, actor} = await GmMonitor.#Helper.getActorValidated(target);
+        const {isValid, actor} = await GmMonitor.#getActorValidated(target);
         if(!isValid)
             return;
 
@@ -351,7 +347,7 @@ export class GmMonitor extends HandlebarsApplicationMixin(ApplicationV2) {
                 void_points: {
                     value: Math.min(
                             void_points_max,
-                            GmMonitor.#Helper.newValue(void_points, event.button)
+                            GmMonitor.#newValue(void_points, event.button)
                     ),
                 },
             },

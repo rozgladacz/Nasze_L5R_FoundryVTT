@@ -136,31 +136,30 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
         game.settings.set(CONFIG.l5r5e.namespace, "initiative-difficulty-hidden", !hidden_setting);
     }
 
-    static #Helper = {
-        /**
-         * @param {Boolean} allActors 
-         * @param {ActorL5r5e} actor 
-         * @returns {Boolean}
-         */
-        updatableCharacter(allActors, actor) {
-            if (!actor.isCharacterType)
-                return false;
+    /**
+     * @param {Boolean} allActors 
+     * @param {ActorL5r5e} actor 
+     * @returns {Boolean}
+     */
+    static #updatableCharacter(allActors, actor) {
+        if (!actor.isCharacterType)
+            return false;
 
-            if (allActors) {
-                return true;
-            }
-            return actor.isCharacter && actor.hasPlayerOwnerActive
-        },
-        /**
-         * 
-         * @param {Boolean} allActors 
-         * @param {String} type 
-         */
-        uiNotification(allActors, type) {
-            ui.notifications.info(
-                ` <i class="fas fa-user${allActors ? "s" : ""}"></i> ` + game.i18n.localize(`l5r5e.gm.toolbox.${type}_info`)
-            );
+        if (allActors) {
+            return true;
         }
+        return actor.isCharacter && actor.hasPlayerOwnerActive
+    }
+
+    /**
+     * 
+     * @param {Boolean} allActors 
+     * @param {String} type 
+     */
+    static #uiNotification(allActors, type) {
+        ui.notifications.info(
+            ` <i class="fas fa-user${allActors ? "s" : ""}"></i> ` + game.i18n.localize(`l5r5e.gm.toolbox.${type}_info`)
+        );
     }
 
     /**
@@ -169,7 +168,7 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onResetVoid(event) {
         const allActors = event.button !== 0;
         for await (const actor of game.actors.contents) {
-            if (!GmToolbox.#Helper.updatableCharacter(allActors, actor)) {
+            if (!GmToolbox.#updatableCharacter(allActors, actor)) {
                 continue;
             }
             await actor.update({
@@ -181,7 +180,7 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
             });
         }
 
-        GmToolbox.#Helper.uiNotification(allActors, "reset_void");
+        GmToolbox.#uiNotification(allActors, "reset_void");
     }
 
     /**
@@ -190,7 +189,7 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onSleep(event) {
         const allActors = event.button !== 0;
         for await (const actor of game.actors.contents) {
-            if (!GmToolbox.#Helper.updatableCharacter(allActors, actor)) {
+            if (!GmToolbox.#updatableCharacter(allActors, actor)) {
                 continue;
             }
             await actor.update({
@@ -204,7 +203,7 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
             });
         }
 
-        GmToolbox.#Helper.uiNotification(allActors, "sleep");
+        GmToolbox.#uiNotification(allActors, "sleep");
     }
 
     /**
@@ -213,7 +212,7 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onSceneEnd(event) {
         const allActors = event.button !== 0;
         for await (const actor of game.actors.contents) {
-            if (!GmToolbox.#Helper.updatableCharacter(allActors, actor)) {
+            if (!GmToolbox.#updatableCharacter(allActors, actor)) {
                 continue;
             }
 
@@ -235,7 +234,7 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
             });
         }
 
-        GmToolbox.#Helper.uiNotification(allActors, "scene_end");
+        GmToolbox.#uiNotification(allActors, "scene_end");
     }
 
     /**
