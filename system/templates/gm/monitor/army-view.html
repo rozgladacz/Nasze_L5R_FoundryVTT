@@ -47,7 +47,7 @@
                     / {{army.system.commander_standing.status}}
                 </td>
                 <td><i data-actor-uuid="{{army.uuid}}" data-type="global" class="fas fa-question-circle actor-infos-control"></i></td>
-                <td><span data-actor-uuid="{{army.uuid}}" class="actor-remove-control pointer" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></span></td>
+                <td><span data-actor-uuid="{{army.uuid}}" data-action="remove_actor" class="actor-remove-control pointer" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></span></td>
             </tr>
             {{/each}}
             </tbody>
