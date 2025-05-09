@@ -202,7 +202,13 @@
         vertical-align: middle;
     }
 
+    .dice-container.assistance {
+        display: flex;
+        align-items: anchor-center;
+    }
+
     .dice-container {
+        display: inline-block;
         position: relative;
         text-align: center;
 
