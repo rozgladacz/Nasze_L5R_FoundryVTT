@@ -623,11 +623,14 @@ button {
                     border-right: 1px solid $l5r5e-white-light;
                 }
                 li {
-                    flex: 1;
                     cursor: url("../assets/cursors/pointer.webp"), pointer;
                 }
             }
+            .prepared {
+                justify-content: space-evenly;
+            }
             .encounter {
+                justify-content: space-between;
                 i {
                     font-size: 23px;
                     vertical-align: middle;
