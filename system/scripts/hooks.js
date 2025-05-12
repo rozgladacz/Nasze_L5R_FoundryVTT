@@ -165,7 +165,7 @@ export default class HooksL5r5e {
      */
     static async renderCombatTracker(app, html, data) {
         // Display Combat bar (only for GMs)
-        await this._gmCombatBar(app, html, data);
+        await this._gmCombatBar(app, $(html), data);
     }
 
     /**
