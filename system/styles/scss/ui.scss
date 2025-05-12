@@ -468,6 +468,7 @@ button {
     min-width: 240px;
 
     .window-content {
+        background: rgb(255, 250, 230) url("../assets/imgs/bg-l5r.webp") no-repeat;
         [data-application-part="hidden_tabs"] {
             display: none;
         }
@@ -533,7 +534,6 @@ button {
         }
     }
     .window-content {
-        background: none;
         padding: 0;
         .gm-tools-container {
             color: var(--color-text-primary);
