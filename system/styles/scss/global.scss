@@ -198,27 +198,6 @@ fieldset {
     }
 }
 
-// inputs
-input[type="text"],
-input[type="number"],
-input[type="password"],
-input[type="date"],
-input[type="time"],
-textarea {
-    padding: 0.25rem;
-    background: $l5r5e-white;
-    border: 1px solid $l5r5e-title;
-    color: $l5r5e-bold;
-    resize: vertical;
-    border-radius: 0;
-    &[disabled] {
-        background: $l5r5e-white-light;
-    }
-}
-input[type="number"] {
-    text-align: center;
-}
-
 // Editors
 .editor,
 .editor-content {
