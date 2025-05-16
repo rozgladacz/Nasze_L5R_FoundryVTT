@@ -5,11 +5,11 @@
 @import "../scss/compatibility-modules";
 @import "../scss/fonts";
 @import "../scss/cursors";
-@import "../scss/dices";
 @import "../scss/ui";
 @import "../scss/global-appv2.scss";
 
     .l5r5e {
+        @import "../scss/dices";
         @import "../scss/l5r5e-global";
         @import "../scss/dices-chat";
         @import "../scss/sheets";
