@@ -295,23 +295,17 @@ button {
 }
 
 // Compendium
-.ring-filter,
-.number-filter {
-    .selected {
-        background-image: radial-gradient(closest-side, yellow, transparent);
+.directory-item {    
+    .ring-filter {
+        i.i_earth,
+        i.i_fire,
+        i.i_water,
+        i.i_air,
+        i.i_void {
+            line-height: unset; // do not have it rised up
+        }
     }
-}
 
-.ring-filter {
-    i.i_earth,
-    i.i_fire,
-    i.i_water,
-    i.i_air,
-    i.i_void {
-        line-height: unset; // do not have it rised up
-    }
-}
-.directory-item {
     .ring-rarity-rank {
         flex: unset
     }
@@ -321,12 +315,22 @@ button {
     filter:brightness(0.5);
 }
 
-l5r5e-multi-select {
-    select {
-        background: rgba(255, 255, 245, 0.8); // same as the header-search in compendium popout
+.compendium-header {
+    .ring-filter{
+        .selected {
+            filter: drop-shadow(0px 0px 5px yellow);
+        }
     }
-    .input-element-tags {
-        max-height: 100px;
+    .rank-filter {
+        .selected {
+            filter: drop-shadow(0px 0px 5px yellow) drop-shadow(0px 0px 5px yellow) drop-shadow(0px 0px 5px yellow);
+        }
+    }
+
+    l5r5e-multi-select {
+        .input-element-tags {
+            max-height: 100px;
+        }
     }
 }
 
