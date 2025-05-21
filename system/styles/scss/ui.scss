@@ -295,53 +295,38 @@ button {
 }
 
 // Compendium
-.compendium,
-.compendium-list {
-    .compendium-pack {
-        .pack-title {
-            margin: 0;
-            line-height: 1rem;
-        }
-        .compendium-footer {
-            text-align: right;
-            margin-right: 2rem;
-            font-size: 0.75rem;
-            color: rgba(240, 240, 225, 0.75);
-        }
+.ring-filter,
+.number-filter {
+    .selected {
+        background-image: radial-gradient(closest-side, yellow, transparent);
     }
-    .ring-filter,
-    .number-filter {
-        .selected {
-            background-image: radial-gradient(closest-side, yellow, transparent);
-        }
-    }
+}
 
-    .ring-filter {
-        i.i_earth,
-        i.i_fire,
-        i.i_water,
-        i.i_air,
-        i.i_void {
-            line-height: unset; // do not have it rised up
-        }
+.ring-filter {
+    i.i_earth,
+    i.i_fire,
+    i.i_water,
+    i.i_air,
+    i.i_void {
+        line-height: unset; // do not have it rised up
     }
-    .directory-item {
-        .ring-rarity-rank {
-            flex: unset
-        }
+}
+.directory-item {
+    .ring-rarity-rank {
+        flex: unset
     }
+}
 
-    .not-for-players {
-        filter:brightness(0.5);
-    }
+.not-for-players {
+    filter:brightness(0.5);
+}
 
-    l5r5e-multi-select {
-        select {
-            background: rgba(255, 255, 245, 0.8); // same as the header-search in compendium popout
-        }
-        .input-element-tags {
-            max-height: 100px;
-        }
+l5r5e-multi-select {
+    select {
+        background: rgba(255, 255, 245, 0.8); // same as the header-search in compendium popout
+    }
+    .input-element-tags {
+        max-height: 100px;
     }
 }
 
