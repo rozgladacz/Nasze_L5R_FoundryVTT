@@ -310,9 +310,9 @@ export default class HooksL5r5e {
 
             const unavailableSourceForPlayers = allCompendiumReferences.filter((element) => {
                 if (CONFIG.l5r5e.sourceReference[element]) {
-                    return officialContent.length > 0 ? !officialContent.includes(element) : false;
+                    return officialContent.size > 0 ? !officialContent.has(element) : false;
                 }
-                return unofficialContent.length > 0 ? !unofficialContent.includes(element) : false;
+                return unofficialContent.size > 0 ? !unofficialContent.has(element) : false;
             });
 
             // Create filter function
