@@ -52,7 +52,7 @@
     gap: 4px; // halve the distance between menu icons
 }
 
-#sidebar-content {
+#sidebar-content.expanded {
     background: url("../assets/ui/bgSidebar.webp") no-repeat;
     border-image: url("../assets/ui/macro-button.webp") 10 repeat;
     border-style: solid;
