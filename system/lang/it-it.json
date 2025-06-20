@@ -104,24 +104,6 @@
                 "others": "Others"
             }
         },
-        "settings": {
-            "notes": {
-                "title": "Patch Notes",
-                "link": "<link here>"
-            },
-            "issues": {
-                "title": "Issues",
-                "link": "<link here>"
-            },
-            "wiki": {
-                "title": "Wiki",
-                "link": "https://gitlab.com/teaml5r/l5r5e/-/wikis/home"
-            },
-            "custom-compendiums": {
-                    "title": "Compendiums",
-                    "link": "https://gitlab.com/teaml5r/l5r5e/-/wikis/users/custom-compendiums.md"
-            }
-        },
         "logo": {
             "title": "Bisogno di aiuto?",
             "src": "systems/l5r5e/assets/l5r-logo.webp",
@@ -141,6 +123,22 @@
                 "title": "Discord Ufficiale di FoundryVTT",
                 "info": "Il tuo browser aprirà il Discord ufficiale di Foundry",
                 "link": "https://discordapp.com/invite/DDBZUDf"
+            },
+            "notes": {
+                "title": "Changelog",
+                "link": "https://gitlab.com/teaml5r/l5r5e/-/blob/master/CHANGELOG.md"
+            },
+            "issues": {
+                "title": "Issues",
+                "link": "https://gitlab.com/teaml5r/l5r5e/-/issues"
+            },
+            "custom-compendiums": {
+                "title": "Compendiums",
+                "link": "https://gitlab.com/teaml5r/l5r5e/-/wikis/users/custom-compendiums.md"
+            },
+            "wiki": {
+                "title": "Wiki",
+                "link": "https://gitlab.com/teaml5r/l5r5e/-/wikis/home"
             }
         },
         "rings": {

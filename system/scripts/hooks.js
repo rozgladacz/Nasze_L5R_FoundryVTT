@@ -119,48 +119,17 @@ export default class HooksL5r5e {
             }
     }
 
-    static activateSettings(app) {
+    static async activateSettings(app) {
         const html = app.element
         const pip = html.querySelector(".info .system .notification-pip");
-        html.querySelector(".info .system").remove();
-      
+        html.querySelector(".info.system.l5r5e")?.remove();
+
         const section = document.createElement("section");
-        section.classList.add("l5r5e", "sidebar-info");
-        section.innerHTML = `
-          <h4 class="divider">${game.i18n.localize("WORLD.FIELDS.system.label")}</h4>
-          <div class="l5r5e system-badge">
-            <img src="systems/l5r5e/assets/l5r-logo.webp" data-tooltip="${game.i18n.localize("l5r5e.title")}" alt="${game.i18n.localize("l5r5e.title")}">
-            <span class="system-info">${game.system.version}</span>
-          </div>
-        `;
-
-        const links = document.createElement("ul");
-        links.classList.add("unlist", "links");
-        links.innerHTML = `
-        <li>
-            <a href="${game.i18n.localize("l5r5e.settings.notes.link")}" target="_blank">
-            ${game.i18n.localize("l5r5e.settings.notes.title")}
-            </a>
-        </li>
-        <li>
-            <a href="${game.i18n.localize("l5r5e.settings.issues.link")}" target="_blank">${game.i18n.localize("l5r5e.settings.issues.title")}</a>
-        </li>
-        <li>
-            <a href="${game.i18n.localize("l5r5e.settings.wiki.link")}" target="_blank">${game.i18n.localize("l5r5e.settings.wiki.title")}</a>
-        </li>
-        <li>
-            <a href="${game.i18n.localize("l5r5e.settings.custom-compendiums.link")}" target="_blank">
-            ${game.i18n.localize("l5r5e.settings.custom-compendiums.title")}
-            </a>
-        </li>
-        <li>
-            <a href="${game.i18n.localize("l5r5e.logo.discord.link")}" target="_blank">
-            ${game.i18n.localize("l5r5e.logo.discord.title")}
-            </a>
-        </li>
-        `;
-
-        section.append(links);
+        section.className = "info system l5r5e";
+        const tpl = await foundry.applications.handlebars.renderTemplate(`${CONFIG.l5r5e.paths.templates}settings/logo.html`, {
+            SystemVersion: game.system.version
+        });
+        section.append(foundry.utils.parseHTML(tpl));
         if ( pip ) section.querySelector(".system-info").insertAdjacentElement("beforeend", pip);
         html.querySelector(".info").insertAdjacentElement("afterend", section);
     }
