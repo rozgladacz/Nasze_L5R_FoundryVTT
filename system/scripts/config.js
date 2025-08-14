@@ -67,7 +67,7 @@ export const L5R5E = {
         },
         "children_of_the_five_winds": {
             value: "children_of_the_five_winds",
-            label: "l5r5e.source_reference.the_scroll_or_the_blade",
+            label: "l5r5e.source_reference.children_of_the_five_winds",
             type: "l5r5e.multiselect.sources_categories.rules"
         },
         "gm_kit": {
