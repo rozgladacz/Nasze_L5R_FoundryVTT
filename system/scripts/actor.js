@@ -199,7 +199,7 @@ export class ActorL5r5e extends Actor {
         const effectsToRemove = this.statuses.intersection(conditions);
         const idsToRemove = this.effects.contents
             .filter(effect => effect.statuses.isSubsetOf(effectsToRemove))
-            .map(effect => effect.id)
+            .map(effect => effect.id);
         await this.deleteEmbeddedDocuments("ActiveEffect", idsToRemove);
     }
 
