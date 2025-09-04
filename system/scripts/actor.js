@@ -200,7 +200,6 @@ export class ActorL5r5e extends Actor {
         const idsToRemove = this.effects.contents
             .filter(effect => effect.statuses.isSubsetOf(effectsToRemove))
             .map(effect => effect.id)
-        console.log(idsToRemove)
         await this.deleteEmbeddedDocuments("ActiveEffect", idsToRemove);
     }
 
