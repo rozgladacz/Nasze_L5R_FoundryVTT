@@ -205,8 +205,8 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
                     }
                 },
             });
+            await actor.removeConditions(new Set(["exhausted"]));
         }
-
         GmToolbox.#uiNotification(allActors, "sleep");
     }
 
