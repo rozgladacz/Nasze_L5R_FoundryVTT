@@ -3,41 +3,43 @@ const ApplicationV2 = foundry.applications.api.ApplicationV2;
 
 export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
     /** @override ApplicationV2 */
-    static get DEFAULT_OPTIONS() { return {
-        id: "l5r5e-gm-toolbox",
-        window: {
-            contentClasses: ["l5r5e", "gm-toolbox", "faded-ui"],
-            title: "l5r5e.gm.toolbox.title",
-            minimizable: true,
-        },
-        position: {
-            width: "auto",
-            height: "auto"
-        },
-        actions: {
-            open_gm_monitor: GmToolbox.#openGmMonitor,
-            toggle_hide_difficulty: GmToolbox.#onToggleHideDifficulty,
-            // Buttons map (0: left, 1: middle, 2: right, 3: extra 1, 4: extra 2)
-            // Foundry v13 use middle (1) for popup and currently not bind it for custom
-            // See : https://github.com/foundryvtt/foundryvtt/issues/12531
-            change_difficulty: {
-                buttons: [0, 1, 2],
-                handler: GmToolbox.#onChangeDifficulty
+    static get DEFAULT_OPTIONS() {
+        return {
+            id: "l5r5e-gm-toolbox",
+            window: {
+                contentClasses: ["l5r5e", "gm-toolbox", "faded-ui"],
+                title: "l5r5e.gm.toolbox.title",
+                minimizable: true
             },
-            reset_void: {
-                buttons: [0, 1, 2, 3, 4],
-                handler: GmToolbox.#onResetVoid
+            position: {
+                width: "auto",
+                height: "auto"
             },
-            sleep: {
-                buttons: [0, 1, 2, 3, 4],
-                handler: GmToolbox.#onSleep
-            },
-            scene_end: {
-                buttons: [0, 1, 2, 3, 4],
-                handler: GmToolbox.#onSceneEnd
-            },
-        }
-    }};
+            actions: {
+                open_gm_monitor: GmToolbox.#openGmMonitor,
+                toggle_hide_difficulty: GmToolbox.#onToggleHideDifficulty,
+                // Buttons map (0: left, 1: middle, 2: right, 3: extra 1, 4: extra 2)
+                // Foundry v13 use middle (1) for popup and currently not bind it for custom
+                // See : https://github.com/foundryvtt/foundryvtt/issues/12531
+                change_difficulty: {
+                    buttons: [0, 1, 2],
+                    handler: GmToolbox.#onChangeDifficulty
+                },
+                reset_void: {
+                    buttons: [0, 1, 2, 3, 4],
+                    handler: GmToolbox.#onResetVoid
+                },
+                sleep: {
+                    buttons: [0, 1, 2, 3, 4],
+                    handler: GmToolbox.#onSleep
+                },
+                scene_end: {
+                    buttons: [0, 1, 2, 3, 4],
+                    handler: GmToolbox.#onSceneEnd
+                }
+            }
+        };
+    };
 
     /** @override HandlebarsApplicationMixin */
     static PARTS = {
@@ -64,7 +66,7 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
     async _prepareContext() {
         return {
             difficulty: game.settings.get(CONFIG.l5r5e.namespace, "initiative-difficulty-value"),
-            difficultyHidden: game.settings.get(CONFIG.l5r5e.namespace, "initiative-difficulty-hidden"),
+            difficultyHidden: game.settings.get(CONFIG.l5r5e.namespace, "initiative-difficulty-hidden")
         };
     }
 
@@ -74,7 +76,7 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     async _renderFrame(options) {
         const frame = await super._renderFrame(options);
-        $(frame).find('button[data-action="close"]').remove();
+        $(frame).find("button[data-action=\"close\"]").remove();
         return frame;
     }
 
@@ -108,7 +110,7 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static #openGmMonitor() {
-        const app = foundry.applications.instances.get("l5r5e-gm-monitor")
+        const app = foundry.applications.instances.get("l5r5e-gm-monitor");
         if (app) {
             app.close();
         } else {
@@ -136,7 +138,7 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static #onToggleHideDifficulty() {
-        const hiddenSetting = game.settings.get(CONFIG.l5r5e.namespace, "initiative-difficulty-hidden")
+        const hiddenSetting = game.settings.get(CONFIG.l5r5e.namespace, "initiative-difficulty-hidden");
         game.settings.set(CONFIG.l5r5e.namespace, "initiative-difficulty-hidden", !hiddenSetting);
     }
 
@@ -153,7 +155,7 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
         if (allActors) {
             return true;
         }
-        return actor.isCharacter && actor.hasPlayerOwnerActive
+        return actor.isCharacter && actor.hasPlayerOwnerActive;
     }
 
     /**
@@ -178,9 +180,9 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
             await actor.update({
                 system: {
                     void_points: {
-                        value: Math.ceil(actor.system.void_points.max / 2),
-                    },
-                },
+                        value: Math.ceil(actor.system.void_points.max / 2)
+                    }
+                }
             });
         }
 
@@ -201,10 +203,11 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
                     fatigue: {
                         value: Math.max(0,
                             actor.system.fatigue.value - Math.ceil(actor.system.rings.water * 2)
-                        ),
+                        )
                     }
-                },
+                }
             });
+            await actor.removeConditions(new Set(["exhausted"]));
         }
 
         GmToolbox.#uiNotification(allActors, "sleep");
@@ -216,10 +219,10 @@ export class GmToolbox extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onSceneEnd(event) {
         const allActors = event.button !== 0;
         for await (const actor of game.actors.contents) {
-            if (!GmToolbox.#updatableCharacter(allActors, actor)) {
+            if (!GmToolbox.#updatableCharacter(allActors, actor)
+                || actor.statuses.has("exhausted")) {
                 continue;
             }
-
             await actor.update({
                 system: {
                     fatigue: {
