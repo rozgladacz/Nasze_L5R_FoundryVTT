@@ -129,8 +129,8 @@ export class ActorL5r5e extends Actor {
     async _preUpdate(changes, options, user) {
         if (this.isCharacterType) {
             // apply compromised condition if strife goes beyond max
-            const strife = changes.system?.strife.value ?? this.system.strife.value;
-            const maxStrife = changes.system?.strife.max ?? this.system.strife.max;
+            const strife = changes.system?.strife?.value ?? this.system.strife.value;
+            const maxStrife = changes.system?.strife?.max ?? this.system.strife.max;
             const isCompromised = strife > maxStrife;
             await this.toggleStatusEffect('compromised', {active: isCompromised});
         }
