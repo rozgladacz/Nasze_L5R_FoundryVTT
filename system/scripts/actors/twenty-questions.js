@@ -34,6 +34,7 @@ export class TwentyQuestions {
         "step3.school_ability",
         "step3.equipment",
         "step9.distinction",
+        "step8.item",
         "step10.adversity",
         "step11.passion",
         "step12.anxiety",
@@ -41,6 +42,7 @@ export class TwentyQuestions {
         "step13.disadvantage",
         "step14.special_features",
         "step16.item",
+        "step17.bond",
         "step18.heritage_item",
     ];
 
@@ -48,6 +50,7 @@ export class TwentyQuestions {
      * All this object data (Steps)
      */
     data = {
+        template: "core",
         generated: false,
         step1: {
             clan: "",
@@ -76,11 +79,14 @@ export class TwentyQuestions {
             allowed_techniques: {
                 kata: false,
                 kiho: false,
+                inversion: false,
                 invocation: false,
                 ritual: false,
                 shuji: false,
                 maho: false,
                 ninjutsu: false,
+                mantra: false,
+                specificity: true,
             },
             techniques: [],
             school_ability: [],
@@ -106,6 +112,9 @@ export class TwentyQuestions {
             bushido: "",
             skill: "",
             social_add_honor: 10,
+            tenet_paramount: "",
+            tenet_less_significant: "",
+            item: [],
         },
         step9: {
             success: "",
@@ -143,6 +152,7 @@ export class TwentyQuestions {
         step17: {
             parents_pov: "",
             skill: "",
+            bond: [],
         },
         step18: {
             heritage_name: "",
@@ -174,17 +184,17 @@ export class TwentyQuestions {
      * Update object with form data
      */
     updateFromForm(formData) {
-        this.data = mergeObject(this.data, expandObject(formData));
+        this.data = foundry.utils.mergeObject(this.data, foundry.utils.expandObject(formData));
     }
 
     /**
      * Initialize data from a actor
      */
     fromActor(actor) {
-        const actorDatas = actor.data.data;
+        const actorDatas = actor.system;
 
         // already 20q struct ?
-        if (actorDatas.twenty_questions?.step1?.clan) {
+        if (!foundry.utils.isEmpty(actorDatas.twenty_questions)) {
             this.data = {
                 ...this.data,
                 ...actorDatas.twenty_questions,
@@ -199,22 +209,28 @@ export class TwentyQuestions {
         this.data.step3.roles = actorDatas.identity.roles;
         this.data.step3.allowed_techniques.kata = actorDatas.techniques.kata;
         this.data.step3.allowed_techniques.kiho = actorDatas.techniques.kiho;
+        this.data.step3.allowed_techniques.inversion = actorDatas.techniques.inversion;
         this.data.step3.allowed_techniques.invocation = actorDatas.techniques.invocation;
         this.data.step3.allowed_techniques.ritual = actorDatas.techniques.ritual;
         this.data.step3.allowed_techniques.shuji = actorDatas.techniques.shuji;
         this.data.step3.allowed_techniques.maho = actorDatas.techniques.maho;
         this.data.step3.allowed_techniques.ninjutsu = actorDatas.techniques.ninjutsu;
+        this.data.step3.allowed_techniques.mantra = actorDatas.techniques.mantra;
         this.data.step5.social_giri = actorDatas.social.giri;
         this.data.step6.social_ninjo = actorDatas.social.ninjo;
-        this.data.step19.firstname = actor.data.name.replace(/^(?:\w+\s+)?(.+)$/gi, "$1") || "";
+        this.data.step8.tenet_paramount = actorDatas.social.bushido_tenets.paramount;
+        this.data.step8.tenet_less_significant = actorDatas.social.bushido_tenets.less_significant;
+        this.data.step19.firstname = actor.name.replace(/^(?:\w+\s+)?(.+)$/gi, "$1") || "";
     }
 
     /**
      * Fill a actor data from this object
      */
     async toActor(actor, itemsCache) {
-        const actorDatas = actor.data.data;
+        const actorDatas = actor.system;
         const formData = this.data;
+
+        this.data.generated = true;
 
         const status = parseInt(formData.step1.social_status) + parseInt(formData.step18.heritage_add_status);
 
@@ -229,6 +245,8 @@ export class TwentyQuestions {
             parseInt(formData.step18.heritage_add_honor);
 
         // Update the actor
+        actorDatas.soft_locked = true;
+        actorDatas.template = formData.template;
         actorDatas.zeni = Math.floor(formData.step2.wealth * 50);
         actorDatas.identity = {
             ...actorDatas.identity,
@@ -245,23 +263,29 @@ export class TwentyQuestions {
             honor: honor,
             giri: formData.step5.social_giri,
             ninjo: formData.step6.social_ninjo,
+            bushido_tenets: {
+                paramount: formData.step8.tenet_paramount,
+                less_significant: formData.step8.tenet_less_significant,
+            },
         };
 
         actorDatas.techniques = {
             ...actorDatas.techniques,
             kata: !!formData.step3.allowed_techniques.kata,
             kiho: !!formData.step3.allowed_techniques.kiho,
+            inversion: !!formData.step3.allowed_techniques.inversion,
             invocation: !!formData.step3.allowed_techniques.invocation,
             ritual: !!formData.step3.allowed_techniques.ritual,
             shuji: !!formData.step3.allowed_techniques.shuji,
             maho: !!formData.step3.allowed_techniques.maho,
             ninjutsu: !!formData.step3.allowed_techniques.ninjutsu,
+            mantra: !!formData.step3.allowed_techniques.mantra,
         };
 
         // Rings - Reset to 1, and apply modifiers
         CONFIG.l5r5e.stances.forEach((ring) => (actorDatas.rings[ring] = 1));
         TwentyQuestions.ringList.forEach((formName) => {
-            const ring = getProperty(this.data, formName);
+            const ring = foundry.utils.getProperty(this.data, formName);
             if (ring !== "none") {
                 actorDatas.rings[ring] = actorDatas.rings[ring] + 1;
             }
@@ -272,7 +296,7 @@ export class TwentyQuestions {
             actorDatas.skills[skillCat][skillId] = 0;
         });
         TwentyQuestions.skillList.forEach((formName) => {
-            const skillId = getProperty(this.data, formName);
+            const skillId = foundry.utils.getProperty(this.data, formName);
             const skillCat = CONFIG.l5r5e.skills.get(skillId);
             if (skillId !== "none") {
                 actorDatas.skills[skillCat][skillId] = actorDatas.skills[skillCat][skillId] + 1;
@@ -280,27 +304,33 @@ export class TwentyQuestions {
         });
 
         // Clear and add items to actor
-        const deleteIds = actor.data.items.map((e) => e._id);
-        await actor.deleteEmbeddedEntity("OwnedItem", deleteIds);
+        const deleteIds = actor.items.map((e) => e.id);
+        if (deleteIds.length > 0) {
+            await actor.deleteEmbeddedDocuments("Item", deleteIds);
+        }
 
         // Add items in 20Q to actor
-        for (const types of Object.values(itemsCache)) {
-            for (const item of types) {
-                const itemData = duplicate(item.data);
-                if (itemData.data?.bought_at_rank) {
-                    itemData.data.bought_at_rank = 0;
+        const newItemsData = [];
+        Object.values(itemsCache).forEach((types) => {
+            types.forEach((item) => {
+                const itemData = foundry.utils.duplicate(item);
+                if (itemData.system?.bought_at_rank) {
+                    itemData.system.bought_at_rank = 0;
                 }
-                if (itemData.data?.xp_spent) {
-                    itemData.data.xp_spent = 0;
+                if (itemData.system?.xp_spent) {
+                    itemData.system.xp_spent = 0;
                 }
-                await actor.createEmbeddedEntity("OwnedItem", itemData);
-            }
+                newItemsData.push(itemData);
+            });
+        });
+        if (newItemsData.length > 0) {
+            await actor.createEmbeddedDocuments("Item", newItemsData);
         }
 
         // Update actor
         await actor.update({
-            name: (formData.step2.family + " " + formData.step19.firstname).trim(),
-            data: actorDatas,
+            name: ((formData.template !== "pow" ? formData.step2.family + " " : "") + formData.step19.firstname).trim(),
+            system: actorDatas,
         });
     }
 
@@ -371,7 +401,7 @@ export class TwentyQuestions {
     summariesRingsOrSkills(listName) {
         const store = {};
         TwentyQuestions[listName].forEach((formName) => {
-            const id = getProperty(this.data, formName);
+            const id = foundry.utils.getProperty(this.data, formName);
             if (!id || id === "none") {
                 return;
             }

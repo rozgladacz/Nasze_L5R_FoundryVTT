@@ -5,7 +5,7 @@ import { L5rBaseDie } from "./l5r-base-die.js";
  */
 export class AbilityDie extends L5rBaseDie {
     /** @override */
-    static DENOMINATION = "ds";
+    static DENOMINATION = "s";
 
     static FACES = {
         1: { success: 0, explosive: 0, opportunity: 0, strife: 0, image: "skill_blank" },
@@ -18,8 +18,8 @@ export class AbilityDie extends L5rBaseDie {
         8: { success: 1, explosive: 0, opportunity: 0, strife: 0, image: "skill_s" },
         9: { success: 1, explosive: 0, opportunity: 0, strife: 0, image: "skill_s" },
         10: { success: 1, explosive: 0, opportunity: 1, strife: 0, image: "skill_so" },
-        11: { success: 1, explosive: 1, opportunity: 0, strife: 1, image: "skill_et" },
-        12: { success: 1, explosive: 1, opportunity: 0, strife: 0, image: "skill_e" },
+        11: { success: 0, explosive: 1, opportunity: 0, strife: 1, image: "skill_et" },
+        12: { success: 0, explosive: 1, opportunity: 0, strife: 0, image: "skill_e" },
     };
 
     /** @override */

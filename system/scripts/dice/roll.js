@@ -1,6 +1,3 @@
-import { L5rBaseDie } from "./dietype/l5r-base-die.js";
-import { ActorL5r5e } from "../actor.js";
-
 /**
  * Roll for L5R5e
  */
@@ -8,32 +5,45 @@ export class RollL5r5e extends Roll {
     static CHAT_TEMPLATE = "dice/chat-roll.html";
     static TOOLTIP_TEMPLATE = "dice/tooltip.html";
 
-    constructor(...args) {
-        super(...args);
+    /**
+     * Specific data for L5R
+     */
+    l5r5e = {
+        actor: null,
+        dicesTypes: {
+            std: false,
+            l5r: false,
+        },
+        difficulty: 2,
+        difficultyHidden: false,
+        history: null,
+        initialFormula: null,
+        isInitiativeRoll: false,
+        item: null,
+        keepLimit: null,
+        rnkEnded: false,
+        skillAssistance: 0,
+        skillCatId: "",
+        skillId: "",
+        stance: "",
+        strifeApplied: 0,
+        summary: {
+            totalSuccess: 0,
+            totalBonus: 0,
+            success: 0,
+            explosive: 0,
+            opportunity: 0,
+            strife: 0,
+        },
+        target: null,
+        voidPointUsed: false,
+    };
 
-        this.l5r5e = {
-            stance: "",
-            skillId: "",
-            skillCatId: "",
-            actor: null,
-            dicesTypes: {
-                std: false,
-                l5r: false,
-            },
-            summary: {
-                difficulty: 2,
-                difficultyHidden: false,
-                voidPointUsed: false,
-                success: 0,
-                explosive: 0,
-                opportunity: 0,
-                strife: 0,
-            },
-            history: null,
-        };
+    constructor(formula, data = {}, options = {}) {
+        super(formula, data, options);
 
         // Parse flavor for stance and skillId
-        const flavors = Array.from(args[0].matchAll(/\d+d(s|r)\[([^\]]+)\]/gmu));
+        const flavors = Array.from(formula.matchAll(/\d+d([sr])\[([^\]]+)\]/gmu));
         flavors.forEach((res) => {
             if (res[1] === "r" && !!res[2] && this.l5r5e.stance === "") {
                 this.l5r5e.stance = res[2];
@@ -43,19 +53,35 @@ export class RollL5r5e extends Roll {
             }
         });
 
-        // TODO parse difficulty stance skillId from cmd line ?
+        // Target Infos : get the 1st selected target
+        const targetToken = Array.from(game.user.targets).values().next()?.value?.document;
+        if (targetToken) {
+            this.target = targetToken;
+        }
     }
 
+    /**
+     * Set actor
+     * @param {ActorL5r5e} actor
+     */
     set actor(actor) {
-        this.l5r5e.actor = actor instanceof Actor && actor.owner ? actor : null;
+        this.l5r5e.actor = actor instanceof Actor && actor.isOwner ? actor : null;
+    }
+
+    /**
+     * Set Target Infos (Name, Img)
+     * @param {TokenDocument} targetToken
+     */
+    set target(targetToken) {
+        this.l5r5e.target = targetToken || null;
     }
 
     /**
      * Execute the Roll, replacing dice and evaluating the total result
      * @override
      **/
-    evaluate({ minimize = false, maximize = false } = {}) {
-        if (this._rolled) {
+    async evaluate({ minimize = false, maximize = false } = {}) {
+        if (this._evaluated) {
             throw new Error("This Roll object has already been rolled.");
         }
         if (this.terms.length < 1) {
@@ -63,24 +89,22 @@ export class RollL5r5e extends Roll {
         }
 
         // Clean terms (trim symbols)
-        this.terms = this._identifyTerms(this.constructor.cleanFormula(this.terms));
+        this.terms = this.constructor.simplifyTerms(this.terms);
 
         // Roll dices and inner dices
         this._total = 0;
 
         // Roll
-        super.evaluate({ minimize, maximize });
+        await super.evaluate({ minimize, maximize });
+        this._evaluated = true;
 
-        // Current terms - L5R Summary
-        this.terms.forEach((term) => this._l5rSummary(term));
+        // Save initial formula
+        if (!this.l5r5e.initialFormula) {
+            this.l5r5e.initialFormula = this.formula;
+        }
 
-        // Check inner L5R rolls - L5R Summary
-        this._dice.forEach((term) => this._l5rSummary(term));
-
-        // Store final outputs
-        this._rolled = true;
-        this.l5r5e.dicesTypes.std = this.dice.some((term) => term instanceof DiceTerm && !(term instanceof L5rBaseDie)); // ignore math symbols
-        this.l5r5e.dicesTypes.l5r = this.dice.some((term) => term instanceof L5rBaseDie);
+        // Compute summary
+        this.l5rSummary();
 
         return this;
     }
@@ -88,18 +112,69 @@ export class RollL5r5e extends Roll {
     /**
      * Summarise the total of success, strife... for L5R dices for the current roll
      *
+     * @private
+     */
+    l5rSummary() {
+        const summary = this.l5r5e.summary;
+
+        // Reset totals
+        summary.success = 0;
+        summary.explosive = 0;
+        summary.opportunity = 0;
+        summary.strife = 0;
+        summary.totalSuccess = 0;
+
+        // Current terms - L5R Summary
+        this.terms.forEach((term) => this._l5rTermSummary(term));
+
+        // Check inner L5R rolls - L5R Summary
+        this._dice.forEach((term) => this._l5rTermSummary(term));
+
+        // Store final outputs
+        this.l5r5e.dicesTypes.std = this.dice.some(
+            (term) => term instanceof foundry.dice.terms.DiceTerm && !(term instanceof game.l5r5e.L5rBaseDie)
+        ); // ignore math symbols
+        this.l5r5e.dicesTypes.l5r = this.dice.some((term) => term instanceof game.l5r5e.L5rBaseDie);
+        summary.totalBonus = Math.max(0, summary.totalSuccess - this.l5r5e.difficulty);
+
+        if (!this.l5r5e.keepLimit) {
+            // count ring die + skill assistance
+            this.l5r5e.keepLimit =
+                this.dice.reduce((acc, term) => (term instanceof game.l5r5e.RingDie ? acc + term.number : acc), 0) +
+                Math.max(0, this.l5r5e.skillAssistance || 0);
+
+            // if only bulk skill dice, count the skill dice
+            if (!this.l5r5e.keepLimit) {
+                this.l5r5e.keepLimit = this.dice.reduce(
+                    (acc, term) => (term instanceof game.l5r5e.AbilityDie ? acc + term.number : acc),
+                    0
+                );
+            }
+        }
+
+        // RnK Can do some action ?
+        if (this.l5r5e.history) {
+            this.l5r5e.rnkEnded = !this.l5r5e.history[this.l5r5e.history.length - 1].some(
+                (e) => !!e && e.choice === null
+            );
+        }
+    }
+
+    /**
+     * Summarise the total of success, strife... for L5R dices for the current term
+     *
      * @param term
      * @private
      */
-    _l5rSummary(term) {
-        if (!(term instanceof L5rBaseDie)) {
+    _l5rTermSummary(term) {
+        if (!(term instanceof game.l5r5e.L5rBaseDie)) {
             return;
         }
 
         ["success", "explosive", "opportunity", "strife"].forEach((props) => {
             this.l5r5e.summary[props] += parseInt(term.l5r5e[props]);
         });
-        // TODO Others advantage/disadvantage
+        this.l5r5e.summary.totalSuccess += term.totalSuccess;
     }
 
     /**
@@ -107,7 +182,13 @@ export class RollL5r5e extends Roll {
      * @override
      */
     get total() {
-        if (!this._rolled) {
+        // Return null to trigger the L5R template.
+        // This beak inline roll, but as we need RnK to really resolve the roll, this is acceptable...
+        if (this.l5r5e.dicesTypes.l5r) {
+            return null;
+        }
+
+        if (!this._evaluated) {
             return null;
         }
 
@@ -119,16 +200,15 @@ export class RollL5r5e extends Roll {
         }
 
         // Add L5R summary
-        if (this.l5r5e.dicesTypes.l5r) {
-            const summary = this.l5r5e.summary;
-            total +=
-                (this.l5r5e.dicesTypes.std ? " | " : "") +
-                ["success", "explosive", "opportunity", "strife"]
-                    .map((props) => (summary[props] > 0 ? `<i class="i_${props}"></i> ${summary[props]}` : null))
-                    .filter((c) => !!c)
-                    .join(" | ");
-        }
-
+        // if (this.l5r5e.dicesTypes.l5r) {
+        //     const summary = this.l5r5e.summary;
+        //     total +=
+        //         (this.l5r5e.dicesTypes.std ? " | " : "") +
+        //         ["success", "explosive", "opportunity", "strife"]
+        //             .map((props) => (summary[props] > 0 ? `<i class="i_${props}"></i> ${summary[props]}` : null))
+        //             .filter((c) => !!c)
+        //             .join(" | ");
+        // }
         return total;
     }
 
@@ -140,7 +220,7 @@ export class RollL5r5e extends Roll {
     getTooltip(contexte = null) {
         const parts = this.dice.map((term) => {
             const cls = term.constructor;
-            const isL5rDie = term instanceof L5rBaseDie;
+            const isL5rDie = term instanceof game.l5r5e.L5rBaseDie;
 
             return {
                 formula: term.formula,
@@ -152,12 +232,13 @@ export class RollL5r5e extends Roll {
                 display: !isL5rDie || contexte?.from !== "render",
                 rolls: term.results.map((r) => {
                     return {
-                        result: cls.getResultLabel(r.result),
+                        result: term.getResultLabel(r),
                         classes: [
                             cls.name.toLowerCase(),
                             "d" + term.faces,
-                            !isL5rDie && r.rerolled ? "rerolled" : null,
-                            !isL5rDie && r.exploded ? "exploded" : null,
+                            isL5rDie && r.swapped ? "swapped" : null,
+                            r.rerolled ? "rerolled" : null,
+                            r.exploded ? "exploded" : null,
                             !isL5rDie && r.discarded ? "discarded" : null,
                             !isL5rDie && r.result === 1 ? "min" : null,
                             !isL5rDie && r.result === term.faces ? "max" : null,
@@ -176,7 +257,7 @@ export class RollL5r5e extends Roll {
             displaySummary: contexte?.from !== "render",
         };
 
-        return renderTemplate(CONFIG.l5r5e.paths.templates + this.constructor.TOOLTIP_TEMPLATE, { chatData });
+        return foundry.applications.handlebars.renderTemplate(CONFIG.l5r5e.paths.templates + this.constructor.TOOLTIP_TEMPLATE, { chatData });
     }
 
     /**
@@ -184,9 +265,9 @@ export class RollL5r5e extends Roll {
      * @override
      */
     async render(chatOptions = {}) {
-        chatOptions = mergeObject(
+        chatOptions = foundry.utils.mergeObject(
             {
-                user: game.user._id,
+                user: game.user.id,
                 flavor: null,
                 template: CONFIG.l5r5e.paths.templates + this.constructor.CHAT_TEMPLATE,
                 blind: false,
@@ -196,37 +277,40 @@ export class RollL5r5e extends Roll {
         const isPrivate = chatOptions.isPrivate;
 
         // Execute the roll, if needed
-        if (!this._rolled) {
-            this.roll();
+        if (!this._evaluated) {
+            await this.roll();
         }
-
-        const canRnK = false; // TODO TMP dev in progress
-        // const canRnK = !this.l5r5e.dicesTypes.std
-        //     && this.l5r5e.dicesTypes.l5r
-        //     && this.dice.length > 1
-        //     && this.l5r5e.actor // pb with dice with no actor
-        //     && this.l5r5e.actor.owner;
 
         // Define chat data
         const chatData = {
             formula: isPrivate ? "???" : this._formula,
-            flavor: isPrivate ? null : chatOptions.flavor,
+            flavor: isPrivate ? null : chatOptions.flavor || this.options.flavor,
             user: chatOptions.user,
             isPublicRoll: !isPrivate,
             tooltip: isPrivate ? "" : await this.getTooltip({ from: "render" }),
-            total: isPrivate ? "?" : Math.round(this._total * 100) / 100,
-            data: this.data,
+            total: isPrivate ? "?" : this.total,
+            profileImg: this.l5r5e.actor?.img || "icons/svg/mystery-man.svg",
+            noTargetDisclosure:
+                this.l5r5e.item?.system?.difficulty?.startsWith("@T:") &&
+                /\|m(in|ax)/.test(this.l5r5e.item.system.difficulty),
             l5r5e: isPrivate
                 ? {}
                 : {
                       ...this.l5r5e,
-                      canRnK: canRnK,
-                      dices: this.dice.map((d) => {
+                      dices: this.dice.map((term) => {
+                          const isL5rDie = term instanceof game.l5r5e.L5rBaseDie;
                           return {
-                              diceTypeL5r: d instanceof L5rBaseDie,
-                              rolls: d.results.map((r) => {
+                              diceTypeL5r: isL5rDie,
+                              rolls: term.results.map((r) => {
                                   return {
-                                      result: d.constructor.getResultLabel(r.result),
+                                      result: term.getResultLabel(r),
+                                      classes: [
+                                          isL5rDie && r.swapped ? "swapped" : null,
+                                          r.rerolled ? "rerolled" : null,
+                                          r.exploded ? "exploded" : null,
+                                      ]
+                                          .filter((c) => !!c)
+                                          .join(" "),
                                   };
                               }),
                           };
@@ -235,7 +319,7 @@ export class RollL5r5e extends Roll {
         };
 
         // Render the roll display template
-        return renderTemplate(chatOptions.template, chatData);
+        return foundry.applications.handlebars.renderTemplate(chatOptions.template, chatData);
     }
 
     /**
@@ -243,57 +327,101 @@ export class RollL5r5e extends Roll {
      * This function can either create the ChatMessage directly, or return the data object that will be used to create.
      * @override
      */
-    toMessage(messageData = {}, { rollMode = null, create = true } = {}) {
+    async toMessage(messageData = {}, { rollMode = null } = {}) {
         // Perform the roll, if it has not yet been rolled
-        if (!this._rolled) {
-            this.evaluate();
+        if (!this._evaluated) {
+            await this.evaluate();
         }
 
+        // RollMode
         const rMode = rollMode || messageData.rollMode || game.settings.get("core", "rollMode");
-
-        let template = CONST.CHAT_MESSAGE_TYPES.ROLL;
-        if (["gmroll", "blindroll"].includes(rMode)) {
-            messageData.whisper = ChatMessage.getWhisperRecipients("GM");
+        if (rMode) {
+            messageData = ChatMessage.applyRollMode(messageData, rMode);
         }
-        if (rMode === "blindroll") messageData.blind = true;
-        if (rMode === "selfroll") messageData.whisper = [game.user.id];
+
+        // Force the content to avoid weird foundry behaviour
+        const content = this.l5r5e.dicesTypes.l5r ? await this.render({}) : this.total;
 
         // Prepare chat data
-        messageData = mergeObject(
+        messageData = foundry.utils.mergeObject(
             {
-                user: game.user._id,
-                type: template,
-                content: this._total,
+                user: game.user.id,
+                content,
                 sound: CONFIG.sounds.dice,
                 speaker: {
-                    actor: this.l5r5e.actor?._id || null,
+                    actor: this.l5r5e.actor?.id || null,
                     token: this.l5r5e.actor?.token || null,
                     alias: this.l5r5e.actor?.name || null,
                 },
             },
             messageData
         );
-        messageData.roll = this;
-
-        // Prepare message options
-        const messageOptions = { rollMode: rMode };
+        messageData.rolls = [this];
 
         // Either create the message or just return the chat data
-        return create ? CONFIG.ChatMessage.entityClass.create(messageData, messageOptions) : messageData;
+        return ChatMessage.implementation.create(messageData, {
+            rollMode: rMode,
+        });
     }
 
     /** @override */
     static fromData(data) {
         const roll = super.fromData(data);
 
-        roll.data = duplicate(data.data);
-        roll.l5r5e = duplicate(data.l5r5e);
+        roll.data = foundry.utils.duplicate(data.data);
+        roll.l5r5e = foundry.utils.duplicate(data.l5r5e);
 
-        // get real Actor object
-        if (data.l5r5e.actor && !(data.l5r5e.actor instanceof ActorL5r5e)) {
-            const actor = game.actors.get(data.l5r5e.actor.id);
-            if (actor) {
-                roll.l5r5e.actor = actor;
+        // Get real Actor object
+        if (data.l5r5e.actor) {
+            if (data.l5r5e.actor instanceof game.l5r5e.ActorL5r5e) {
+                // Duplicate break the object, relink it
+                roll.l5r5e.actor = data.l5r5e.actor;
+            } else if (data.l5r5e.actor.uuid) {
+                // Only uuid, get the object
+                let actor;
+                const tmpItem = fromUuidSync(data.l5r5e.actor.uuid);
+                if (tmpItem instanceof Actor) {
+                    actor = tmpItem;
+                } else if (tmpItem instanceof TokenDocument) {
+                    actor = tmpItem.actor;
+                }
+                if (actor) {
+                    roll.l5r5e.actor = actor;
+                }
+            } else if (data.l5r5e.actor.id) {
+                // Compat old chat message : only id
+                const actor = game.actors.get(data.l5r5e.actor.id);
+                if (actor) {
+                    roll.l5r5e.actor = actor;
+                }
+            }
+        }
+
+        // Get real Item object
+        if (data.l5r5e.item) {
+            if (data.l5r5e.item instanceof game.l5r5e.ItemL5r5e) {
+                // Duplicate break the object, relink it
+                roll.l5r5e.item = data.l5r5e.item;
+            } else if (data.l5r5e.item.uuid) {
+                // Only uuid, get the object
+                const tmpItem = fromUuidSync(data.l5r5e.item.uuid);
+                if (tmpItem) {
+                    roll.l5r5e.item = tmpItem;
+                }
+            }
+        }
+
+        // Get real Target object
+        if (data.l5r5e.target) {
+            if (data.l5r5e.target instanceof TokenDocument) {
+                // Duplicate break the object, relink it
+                roll.l5r5e.target = data.l5r5e.target;
+            } else if (data.l5r5e.target.uuid) {
+                // Only uuid, get the object
+                const tmpItem = fromUuidSync(data.l5r5e.target.uuid);
+                if (tmpItem) {
+                    roll.l5r5e.target = tmpItem;
+                }
             }
         }
 
@@ -307,13 +435,27 @@ export class RollL5r5e extends Roll {
     toJSON() {
         const json = super.toJSON();
 
-        json.data = duplicate(this.data);
-        json.l5r5e = duplicate(this.l5r5e);
+        json.data = foundry.utils.duplicate(this.data);
+        json.l5r5e = foundry.utils.duplicate(this.l5r5e);
 
-        // lightweight the Actor
-        if (json.l5r5e.actor) {
+        // Lightweight the Actor
+        if (json.l5r5e.actor && this.l5r5e.actor?.uuid) {
             json.l5r5e.actor = {
-                id: json.l5r5e.actor._id,
+                uuid: this.l5r5e.actor.uuid,
+            };
+        }
+
+        // Lightweight the Item
+        if (json.l5r5e.item && this.l5r5e.item?.uuid) {
+            json.l5r5e.item = {
+                uuid: this.l5r5e.item.uuid,
+            };
+        }
+
+        // Lightweight the Target Token
+        if (json.l5r5e.target && this.l5r5e.target?.uuid) {
+            json.l5r5e.target = {
+                uuid: this.l5r5e.target.uuid,
             };
         }
 

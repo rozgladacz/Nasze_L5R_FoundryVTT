@@ -7,3 +7,9 @@ node_modules
 
 # lint
 .eslintcache
+
+# Foundry Lock files
+system/l5r5e.lock
+
+# v11 db files (will be added later)
+system/packs/*/**

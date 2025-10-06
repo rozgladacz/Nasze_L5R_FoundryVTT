@@ -1,4 +1,3 @@
-import { L5R5E } from "../config.js";
 import { ItemSheetL5r5e } from "./item-sheet.js";
 
 /**
@@ -7,22 +6,22 @@ import { ItemSheetL5r5e } from "./item-sheet.js";
 export class WeaponSheetL5r5e extends ItemSheetL5r5e {
     /** @override */
     static get defaultOptions() {
-        return mergeObject(super.defaultOptions, {
+        return foundry.utils.mergeObject(super.defaultOptions, {
             classes: ["l5r5e", "sheet", "weapon"],
             template: CONFIG.l5r5e.paths.templates + "items/weapon/weapon-sheet.html",
-            width: 520,
-            height: 480,
-            tabs: [{ navSelector: ".sheet-tabs", contentSelector: ".sheet-body", initial: "description" }],
         });
     }
 
-    async getData() {
-        const sheetData = await super.getData();
+    async getData(options = {}) {
+        const sheetData = await super.getData(options);
 
         // Martial skills only
-        sheetData.data.skills = Array.from(L5R5E.skills)
+        sheetData.data.skills = Array.from(CONFIG.l5r5e.skills)
             .filter(([id, cat]) => cat === "martial")
-            .map(([id, cat]) => id);
+            .map(([id, cat]) => ({
+                id,
+                label: "l5r5e.skills." + cat.toLowerCase() + "." + id.toLowerCase(),
+            }));
 
         return sheetData;
     }

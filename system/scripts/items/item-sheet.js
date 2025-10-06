@@ -1,29 +1,33 @@
+import { BaseItemSheetL5r5e } from "./base-item-sheet.js";
+
 /**
- * Extend the basic ItemSheet with some very simple modifications
+ * Extend BaseItemSheetL5r5e with modifications for objects
  * @extends {ItemSheet}
  */
-export class ItemSheetL5r5e extends ItemSheet {
+export class ItemSheetL5r5e extends BaseItemSheetL5r5e {
     /** @override */
     static get defaultOptions() {
-        return mergeObject(super.defaultOptions, {
+        return foundry.utils.mergeObject(super.defaultOptions, {
             classes: ["l5r5e", "sheet", "item"],
             template: CONFIG.l5r5e.paths.templates + "items/item/item-sheet.html",
-            width: 520,
-            height: 480,
-            tabs: [{ navSelector: ".sheet-tabs", contentSelector: ".sheet-body", initial: "description" }],
         });
     }
 
-    /** @override */
-    async getData() {
-        const sheetData = super.getData();
+    /**
+     * @return {Object|Promise}
+     */
+    async getData(options = {}) {
+        const sheetData = await super.getData(options);
 
-        sheetData.data.dtypes = ["String", "Number", "Boolean"];
         sheetData.data.ringsList = game.l5r5e.HelpersL5r5e.getRingsList();
-        sheetData.data.techniquesList = game.l5r5e.HelpersL5r5e.getTechniquesList();
 
         // Prepare Properties (id/name => object)
         await this._prepareProperties(sheetData);
+
+        // Editors enrichment
+        sheetData.data.enrichedHtml = {
+            description: await foundry.applications.ux.TextEditor.implementation.enrichHTML(sheetData.data.system.description, { async: true }),
+        };
 
         return sheetData;
     }
@@ -33,96 +37,55 @@ export class ItemSheetL5r5e extends ItemSheet {
      * @private
      */
     async _prepareProperties(sheetData) {
-        sheetData.data.propertiesList = [];
+        sheetData.data.propertiesList = await Promise.all((sheetData.data?.system?.properties || []).map(async (property) => {
 
-        if (Array.isArray(sheetData.data.properties)) {
-            const props = [];
-            for (const property of sheetData.data.properties) {
-                const gameProp = await game.l5r5e.HelpersL5r5e.getObjectGameOrPack(property.id, "Item");
-                if (gameProp) {
-                    sheetData.data.propertiesList.push(gameProp);
-                    props.push({ id: gameProp._id, name: gameProp.name });
-                }
+            const gameProp = await game.l5r5e.HelpersL5r5e.getObjectGameOrPack({ id: property.id, type: "Item" });
+            if (gameProp) {
+                return gameProp;
             }
-            sheetData.data.properties = props;
-        }
+
+            // Item not found
+            console.warn(`L5R5E | IS | Unknown property id[${property.id}], name[${property.name}]`);
+            return {
+                id: property.id,
+                name: property.name,
+                type: "property",
+                img: "systems/l5r5e/assets/icons/items/property.svg",
+                removed: true,
+            };
+        }));
     }
 
-    /**
-     * Activate a named TinyMCE text editor
-     * @param {string} name             The named data field which the editor modifies.
-     * @param {object} options          TinyMCE initialization options passed to TextEditor.create
-     * @param {string} initialContent   Initial text content for the editor area.
-     * @override
-     */
-    activateEditor(name, options = {}, initialContent = "") {
-        if (name === "data.description" && initialContent) {
-            initialContent = game.l5r5e.HelpersL5r5e.convertSymbols(initialContent, false);
-        }
-        super.activateEditor(name, options, initialContent);
-    }
-
-    /**
-     * This method is called upon form submission after form data is validated
-     * @param event {Event}       The initial triggering submission event
-     * @param formData {Object}   The object of validated form data with which to update the object
-     * @returns {Promise}         A Promise which resolves once the update operation has completed
-     * @override
-     */
-    async _updateObject(event, formData) {
-        if (formData["data.description"]) {
-            formData["data.description"] = game.l5r5e.HelpersL5r5e.convertSymbols(formData["data.description"], true);
-        }
-        return super._updateObject(event, formData);
-    }
 
     /**
      * Subscribe to events from the sheet.
-     * @param html HTML content of the sheet.
+     * @param {jQuery} html HTML content of the sheet.
+     * @override
      */
     activateListeners(html) {
         super.activateListeners(html);
 
-        // Toggle
-        html.find(".toggle-on-click").on("click", (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            const elmt = $(event.currentTarget).data("toggle");
-            const tgt = html.find("." + elmt);
-            tgt.hasClass("toggle-active") ? tgt.removeClass("toggle-active") : tgt.addClass("toggle-active");
-        });
-
         // Everything below here is only needed if the sheet is editable
-        if (!this.options.editable) {
+        if (!this.isEditable) {
             return;
         }
 
-        // On focus on one numeric element, select all text for better experience
-        html.find(".select-on-focus").on("focus", (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            event.target.select();
-        });
-
         // Delete a property
-        html.find(`.property-delete`).on("click", (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            const li = $(event.currentTarget).parents(".property");
-            this._deleteProperty(li.data("propertyId"));
-        });
+        html.find(`.property-delete`).on("click", this._deleteProperty.bind(this));
     }
 
     /**
      * Create drag-and-drop workflow handlers for this Application
-     * @return An array of DragDrop handlers
+     * @return {DragDrop[]} An array of DragDrop handlers
      */
     _createDragDropHandlers() {
+        // "this.isEditable" fail for tooltips (undefined "this.document")
+        const isEditable = this.options.editable;
         return [
-            new DragDrop({
+            new foundry.applications.ux.DragDrop.implementation({
                 dragSelector: ".property",
                 dropSelector: null,
-                permissions: { dragstart: this._canDragStart.bind(this), drop: this._canDragDrop.bind(this) },
+                permissions: { dragstart: isEditable, drop: isEditable },
                 callbacks: { dragstart: this._onDragStart.bind(this), drop: this._onDrop.bind(this) },
             }),
         ];
@@ -133,9 +96,32 @@ export class ItemSheetL5r5e extends ItemSheet {
      * Also a property canot be on another property
      */
     async _onDrop(event) {
+        // Everything below here is only needed if the sheet is editable
+        if (!this.isEditable) {
+            return;
+        }
+
         // Check item type and subtype
-        const item = await game.l5r5e.HelpersL5r5e.getDragnDropTargetObject(event);
-        if (!item || item.entity !== "Item" || item.data.type !== "property" || this.item.type === "property") {
+        let item = await game.l5r5e.HelpersL5r5e.getDragnDropTargetObject(event);
+        if (!item || item.documentName !== "Item") {
+            return;
+        }
+
+        // If we are a property, the child id need to be different to parent
+        if (this.item.type === "property" && this.item.id === item._id) {
+            return;
+        }
+
+        // Specific ItemPattern's drop, get the associated props instead
+        if (item.type === "item_pattern" && item.system.linked_property_id) {
+            item = await game.l5r5e.HelpersL5r5e.getObjectGameOrPack({
+                id: item.system.linked_property_id,
+                type: "Item",
+            });
+        }
+
+        // Final object has to be a property
+        if (item.type !== "property") {
             return;
         }
 
@@ -145,44 +131,72 @@ export class ItemSheetL5r5e extends ItemSheet {
 
     /**
      * Add a property to the current item
+     * @param {Item} item
      * @private
      */
     _addProperty(item) {
-        if (!Array.isArray(this.entity.data.data.properties)) {
-            this.entity.data.data.properties = [];
+        if (!Array.isArray(this.document.system.properties)) {
+            this.document.system.properties = [];
         }
 
-        if (this.entity.data.data.properties.findIndex((p) => p.id === item.id) !== -1) {
+        if (this.document.system.properties.findIndex((p) => p.id === item.id) !== -1) {
             return;
         }
 
-        this.entity.data.data.properties.push({ id: item.id, name: item.name });
+        this.document.system.properties.push({ id: item.id, name: item.name });
 
-        this.entity.update({
-            data: {
-                properties: this.entity.data.data.properties,
+        // This props remove others ?
+        if (Array.isArray(item.system.properties) && item.system.properties.length > 0) {
+            const idsToRemove = item.system.properties.map((e) => e.id);
+            this.document.system.properties = this.document.system.properties.filter(
+                (p) => !idsToRemove.includes(p.id)
+            );
+        }
+
+        this.document.update({
+            system: {
+                properties: this.document.system.properties,
             },
         });
     }
 
     /**
      * Delete a property from the current item
+     * @param {Event} event
+     * @return {Promise<void>}
      * @private
      */
-    _deleteProperty(id) {
-        if (
-            !Array.isArray(this.entity.data.data.properties) ||
-            this.entity.data.data.properties.findIndex((p) => p.id === id) === -1
-        ) {
+    _deleteProperty(event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (!Array.isArray(this.document.system.properties)) {
             return;
         }
 
-        this.entity.data.data.properties = this.entity.data.data.properties.filter((p) => p.id !== id);
+        const id = $(event.currentTarget).parents(".property").data("propertyId");
+        const tmpProps = this.document.system.properties.find((p) => p.id === id);
+        if (!tmpProps) {
+            return;
+        }
 
-        this.entity.update({
-            data: {
-                properties: this.entity.data.data.properties,
-            },
-        });
+        const callback = async () => {
+            this.document.system.properties = this.document.system.properties.filter((p) => p.id !== id);
+            this.document.update({
+                system: {
+                    properties: this.document.system.properties,
+                },
+            });
+        };
+
+        // Holing Ctrl = without confirm
+        if (event.ctrlKey) {
+            return callback();
+        }
+
+        game.l5r5e.HelpersL5r5e.confirmDeleteDialog(
+            game.i18n.format("l5r5e.global.delete_confirm", { name: tmpProps.name }),
+            callback
+        );
     }
 }

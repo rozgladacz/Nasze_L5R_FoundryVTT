@@ -7,21 +7,22 @@ export class AdvancementSheetL5r5e extends ItemSheetL5r5e {
     /**
      * Sub Types of advancements
      */
-    static types = ["ring", "skill"]; // "peculiarity" and "technique" have theirs own xp count
+    static types = [
+        { id: "ring", label: "l5r5e.rings.label" },
+        { id: "skill", label: "l5r5e.skills.label" },
+        // others have theirs own xp count
+    ];
 
     /** @override */
     static get defaultOptions() {
-        return mergeObject(super.defaultOptions, {
+        return foundry.utils.mergeObject(super.defaultOptions, {
             classes: ["l5r5e", "sheet", "advancement"],
             template: CONFIG.l5r5e.paths.templates + "items/advancement/advancement-sheet.html",
-            width: 520,
-            height: 480,
-            tabs: [{ navSelector: ".sheet-tabs", contentSelector: ".sheet-body", initial: "description" }],
         });
     }
 
-    async getData() {
-        const sheetData = await super.getData();
+    async getData(options = {}) {
+        const sheetData = await super.getData(options);
 
         sheetData.data.subTypesList = AdvancementSheetL5r5e.types;
         sheetData.data.skillsList = game.l5r5e.HelpersL5r5e.getSkillsList(true);
@@ -31,61 +32,48 @@ export class AdvancementSheetL5r5e extends ItemSheetL5r5e {
 
     /**
      * Subscribe to events from the sheet.
-     * @param html HTML content of the sheet.
+     * @param {jQuery} html HTML content of the sheet.
      */
     activateListeners(html) {
         super.activateListeners(html);
 
         // Everything below here is only needed if the sheet is editable
-        if (!this.options.editable) {
+        if (!this.isEditable) {
             return;
         }
 
-        // const currentType = this.object.data.data.advancement_type;
-        const currentRing = this.object.data.data.ring;
-        const currentSkill = this.object.data.data.skill;
+        // const currentType = this.object.system.advancement_type;
+        const currentRing = this.object.system.ring;
+        const currentSkill = this.object.system.skill;
 
         html.find("#advancement_type").on("change", (event) => {
-            if ($(event.target).val() === "skill") {
-                this._updateChoice(
-                    {
-                        ring: currentRing,
-                    },
-                    {
-                        skill: currentSkill,
-                    }
+            const targetEvt = $(event.target);
+            targetEvt.prop("disabled", true);
+
+            if (targetEvt.val() === "skill") {
+                this._updateChoice({ ring: currentRing }, { skill: currentSkill }).then(
+                    targetEvt.prop("disabled", false)
                 );
-            } else {
-                this._updateChoice(
-                    {
-                        skill: currentSkill,
-                    },
-                    {
-                        ring: currentRing,
-                    }
+            } else if (targetEvt.val() === "ring") {
+                this._updateChoice({ skill: currentSkill }, { ring: currentRing }).then(
+                    targetEvt.prop("disabled", false)
                 );
             }
         });
 
         html.find("#advancement_ring").on("change", (event) => {
-            this._updateChoice(
-                {
-                    ring: currentRing,
-                },
-                {
-                    ring: $(event.target).val(),
-                }
+            const targetEvt = $(event.target);
+            targetEvt.prop("disabled", true);
+            this._updateChoice({ ring: currentRing }, { ring: targetEvt.val() }).then(
+                targetEvt.prop("disabled", false)
             );
         });
 
         html.find("#advancement_skill").on("change", (event) => {
-            this._updateChoice(
-                {
-                    skill: currentSkill,
-                },
-                {
-                    skill: $(event.target).val(),
-                }
+            const targetEvt = $(event.target);
+            targetEvt.prop("disabled", true);
+            this._updateChoice({ skill: currentSkill }, { skill: targetEvt.val() }).then(
+                targetEvt.prop("disabled", false)
             );
         });
     }
@@ -95,57 +83,71 @@ export class AdvancementSheetL5r5e extends ItemSheetL5r5e {
      * @private
      */
     async _updateChoice(oldChoice, newChoice) {
-        let skillCatId = null;
-        const actor = duplicate(this.actor.data.data);
-        let xp_used = this.object.data.data.xp_used;
-        let name = this.object.data.name;
-        let img = this.object.data.img;
+        let xp_used = this.object.system.xp_used;
+        let name = this.object.name;
+        let img = this.object.img;
 
-        // Old choices
-        if (oldChoice.ring) {
-            actor.rings[oldChoice.ring] = Math.max(1, actor.rings[oldChoice.ring] - 1);
-        }
-        if (oldChoice.skill) {
-            skillCatId = CONFIG.l5r5e.skills.get(oldChoice.skill);
-            actor.skills[skillCatId][oldChoice.skill] = Math.max(0, actor.skills[skillCatId][oldChoice.skill] - 1);
-        }
-
-        // new choices
+        // Modify image to reflect choice
         if (newChoice.ring) {
-            actor.rings[newChoice.ring] = actor.rings[newChoice.ring] + 1;
-            xp_used = actor.rings[newChoice.ring] * CONFIG.l5r5e.xp.ringCostMultiplier;
-            name =
-                game.i18n.localize(`l5r5e.rings.${newChoice.ring}`) +
-                ` +1 (${actor.rings[newChoice.ring] - 1} -> ${actor.rings[newChoice.ring]})`;
+            name = game.i18n.localize(`l5r5e.rings.${newChoice.ring}`) + "+1";
             img = `systems/l5r5e/assets/icons/rings/${newChoice.ring}.svg`;
-        }
-        if (newChoice.skill) {
-            skillCatId = CONFIG.l5r5e.skills.get(newChoice.skill);
-            actor.skills[skillCatId][newChoice.skill] = actor.skills[skillCatId][newChoice.skill] + 1;
-            xp_used = actor.skills[skillCatId][newChoice.skill] * CONFIG.l5r5e.xp.skillCostMultiplier;
+        } else if (newChoice.skill) {
             name =
-                game.i18n.localize(`l5r5e.skills.${skillCatId}.${newChoice.skill}`) +
-                ` +1 (${actor.skills[skillCatId][newChoice.skill] - 1} -> ${
-                    actor.skills[skillCatId][newChoice.skill]
-                })`;
+                game.i18n.localize(`l5r5e.skills.${CONFIG.l5r5e.skills.get(newChoice.skill)}.${newChoice.skill}`) +
+                "+1";
             img = `systems/l5r5e/assets/dices/default/skill_blank.svg`;
         }
 
-        // Update Actor
-        await this.actor.update({
-            data: diffObject(this.actor.data.data, actor),
-        });
+        // Object embed in actor ?
+        const actor = this.document.actor;
+        if (actor) {
+            const actorData = foundry.utils.duplicate(actor.system);
+            let skillCatId = null;
+
+            // Old choices
+            if (oldChoice.ring) {
+                actorData.rings[oldChoice.ring] = Math.max(1, actorData.rings[oldChoice.ring] - 1);
+            }
+            if (oldChoice.skill) {
+                skillCatId = CONFIG.l5r5e.skills.get(oldChoice.skill);
+                actorData.skills[skillCatId][oldChoice.skill] = Math.max(
+                    0,
+                    actorData.skills[skillCatId][oldChoice.skill] - 1
+                );
+            }
+
+            // new choices
+            if (newChoice.ring) {
+                actorData.rings[newChoice.ring] = actorData.rings[newChoice.ring] + 1;
+                xp_used = actorData.rings[newChoice.ring] * CONFIG.l5r5e.xp.ringCostMultiplier;
+                name =
+                    game.i18n.localize(`l5r5e.rings.${newChoice.ring}`) +
+                    ` +1 (${actorData.rings[newChoice.ring] - 1} -> ${actorData.rings[newChoice.ring]})`;
+            }
+            if (newChoice.skill) {
+                skillCatId = CONFIG.l5r5e.skills.get(newChoice.skill);
+                actorData.skills[skillCatId][newChoice.skill] = actorData.skills[skillCatId][newChoice.skill] + 1;
+                xp_used = actorData.skills[skillCatId][newChoice.skill] * CONFIG.l5r5e.xp.skillCostMultiplier;
+                name =
+                    game.i18n.localize(`l5r5e.skills.${skillCatId}.${newChoice.skill}`) +
+                    ` +1 (${actorData.skills[skillCatId][newChoice.skill] - 1} -> ${
+                        actorData.skills[skillCatId][newChoice.skill]
+                    })`;
+            }
+
+            // Update Actor
+            await actor.update({
+                system: foundry.utils.diffObject(actor.system, actorData),
+            });
+        }
 
         // Update object
         await this.object.update({
             name: name,
             img: img,
-            data: {
+            system: {
                 xp_used: xp_used,
             },
         });
-
-        // Re render
-        this.render(false);
     }
 }

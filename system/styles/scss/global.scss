@@ -1,11 +1,17 @@
 /** Global **/
 
 body {
-    background: url("../assets/imgs/bg-table.webp") no-repeat center;
-    background-size: cover;
     > * {
         scrollbar-width: thin;
     }
+    &:not(.background) {
+        background: url("../assets/imgs/bg-table.webp") no-repeat;
+        background-size: cover;
+    }
+}
+
+.toggle-hidden {
+    display: none !important;
 }
 
 /* Windows */
@@ -13,7 +19,6 @@ body {
     .window-content {
         z-index: 1;
         position: relative;
-        background: rgb(255, 250, 230) url("../assets/imgs/bg-l5r.webp") no-repeat;
         background-size: cover;
         scrollbar-width: thin;
         padding: 0;
@@ -62,6 +67,28 @@ body {
                 }
             }
         }
+        // Compendium
+        .compendium {
+            .item {
+                position: relative;
+                i {
+                    float: right;
+                    line-height: 1rem;
+                    text-align: right;
+                    font-size: 0.75rem;
+                    color: rgba(240, 240, 225, 0.75);
+                    font-style: italic;
+                    flex: 0 0 auto;
+                    position: absolute;
+                    right: 0;
+                    text-shadow: 0 0 0 rgba(255, 255, 255, 0.1);
+                    &:before {
+                        margin: 0 0.25rem 0 0;
+                        font-style: normal;
+                    }
+                }
+            }
+        }
     }
     &.sheet,
     &.npc,
@@ -95,11 +122,6 @@ body {
 }
 
 /* Focus, Active */
-* {
-    transition-property: background, color, border-color, text-shadow, box-shadow;
-    transition-duration: 0.5s;
-    transition-timing-function: ease;
-}
 input[type="text"]:focus,
 input[type="number"]:focus,
 input[type="password"]:focus,
@@ -130,20 +152,6 @@ button:focus {
     box-shadow: 0 0 10px $red;
 }
 
-option {
-    font-size: 1rem;
-    line-height: 1.5rem;
-    padding: 0.25rem;
-    color: $black-light;
-}
-
-/* lists */
-ul,
-li {
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
-}
 .item-list {
     > li {
         padding: 0.25rem;
@@ -164,9 +172,10 @@ li {
 // Fieldset
 fieldset {
     flex: 1;
+    flex-wrap: wrap;
     display: flex;
     margin: 0 0.25rem;
-    padding: 0.25rem 0.5rem;
+    padding: 0.5rem;
     border: 1px solid $l5r5e-title;
     legend {
         color: $l5r5e-label;
@@ -176,49 +185,14 @@ fieldset {
     }
 }
 
-// inputs
-input[type="text"],
-input[type="number"],
-input[type="password"],
-input[type="date"],
-input[type="time"] {
-    text-align: center;
-    padding: 0.25rem;
-    background: $l5r5e-white;
-    border: 1px solid $l5r5e-title;
-    color: $l5r5e-bold;
-    &[disabled] {
-        background: $l5r5e-white-light;
-    }
-}
-
 // Editors
 .editor,
-.editor-content {
+.editor-container {
     flex: 1;
     height: 100%;
-    min-height: 5rem;
-}
-
-// Elements Colors
-.earth {
-    color: $l5r5e-earth;
-}
-.air {
-    color: $l5r5e-air;
-}
-.water {
-    color: $l5r5e-water;
-}
-.fire {
-    color: $l5r5e-fire;
-}
-.void {
-    color: $l5r5e-void;
 }
 
 table {
-    text-align: center;
     background: transparent;
     border: 1px solid $l5r5e-title;
     thead {
@@ -252,7 +226,7 @@ sup {
     }
 }
 
-.editor-content,
+.editor-container,
 .item-description {
     ul {
         margin: 0.5rem 0;
@@ -264,7 +238,69 @@ sup {
     }
 }
 
-// Fix for "search anywhere" draggable icon
-.window-draggable-handle {
-    z-index: 2;
+.prepared {
+    &-character {
+        color: $l5r5e-earth;
+    }
+    &-adversary {
+        color: $l5r5e-fire;
+    }
+    &-minion {
+        color: $l5r5e-water;
+    }
+    &-icon {
+        font-weight: 900;
+        -moz-osx-font-smoothing: grayscale;
+        -webkit-font-smoothing: antialiased;
+        display: inline-block;
+        font-style: normal;
+        font-variant: normal;
+        text-rendering: auto;
+        line-height: 1;
+        width: 1.5rem;
+        &-true:before {
+            content: "\f06e";
+        }
+        &-false:before {
+            content: "\f070";
+        }
+        &-actor:before {
+            content: "\f2a8";
+        }
+    }
+}
+
+// Entity link style for compendium folder custom link
+a.compendium-link {
+    background: #ddd;
+    padding: 1px 4px;
+    border: 1px solid #4b4a44;
+    border-radius: 2px;
+    white-space: nowrap;
+    word-break: break-all;
+}
+
+// Color for playlist
+#playlists .sound-control {
+    i.fas.fa-random,
+    i.far.fa-arrow-alt-circle-right,
+    i.fas.fa-compress-arrows-alt,
+    i.fas.fa-ban {
+        color: #ff6400;
+    }
+
+    i.fas.fa-square {
+        color: #dd0000;
+    }
+
+    i.fas.fa-play,
+    i.fas.fa-play-circle {
+        color: #00dd00;
+    }
+
+    i.fas.fa-pause,
+    i.fas.fa-backward,
+    i.fas.fa-forward {
+        color: #0096ff;
+    }
 }

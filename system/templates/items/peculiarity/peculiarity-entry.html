@@ -1,18 +1,15 @@
-<li class="item peculiarity flexcol toggle-on-click" data-toggle="item-description-{{peculiarity._id}}">
+<li class="item peculiarity flexcol" data-item-id="{{peculiarity.id}}">
     <ul class="item-header peculiarity-controls">
         <li class="item-img"><img src="{{peculiarity.img}}" title="{{peculiarity.name}}" width="32px" height="32px"/></li>
-        <li class="item-name">{{ peculiarity.name }}</li>
+        <li class="item-name l5r5e-tooltip" data-item-id="{{peculiarity.id}}">{{peculiarity.name}}</li>
         {{#if editable}}
-            <li data-item-id="{{peculiarity._id}}" class="item-control item-edit" title="{{localize 'l5r5e.global.edit'}}"><i class="fas fa-edit"></i></li>
-            <li data-item-id="{{peculiarity._id}}" class="item-control item-delete" title="{{localize 'l5r5e.global.delete'}}"><i class="fas fa-trash"></i></li>
+            <li data-item-id="{{peculiarity.id}}" class="item-control item-edit" title="{{localize 'l5r5e.global.edit'}}"><i class="fas fa-edit"></i></li>
+            <li data-item-id="{{peculiarity.id}}" class="item-control item-delete" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></li>
         {{/if}}
     </ul>
-    {{#if peculiarity.data.types}}
+    {{#if peculiarity.system.types}}
     <ul class="item-properties">
-        <li>{{ peculiarity.data.types }}</li>
+        <li>{{peculiarity.system.types}}</li>
     </ul>
-    {{/if}}
-    {{#if peculiarity.data.description}}
-        <div class="item-description item-description-{{peculiarity._id}}">{{{ peculiarity.data.description }}}</div>
     {{/if}}
 </li>

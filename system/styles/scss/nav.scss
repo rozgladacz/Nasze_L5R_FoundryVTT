@@ -2,14 +2,17 @@
 nav {
     &.sheet-tabs {
         height: 3rem;
-        line-height: 3rem;
+        line-height: 2rem;
         font-family: $font-tertiary;
-        font-size: 1.25rem;
+        letter-spacing: -0.05rem;
+        font-size: 1rem;
         border: 0 none;
         border-bottom: 1px solid $l5r5e-title;
         margin-bottom: 0;
         background: $l5r5e-white;
         color: $l5r5e-black;
+        display: flex;
+        flex-direction: row;
         --notchSize: 0.5rem;
         clip-path: polygon(
             0% var(--notchSize),
@@ -23,6 +26,7 @@ nav {
         );
     }
     .item {
+        flex: 1;
         &:hover {
             background-color: $l5r5e-label;
             color: $white-light;
@@ -42,7 +46,6 @@ nav {
     .item.active {
         background-color: rgba(73, 12, 11, 0.85);
         color: rgba(255, 255, 255, 1);
-        background-color: rgba(73, 12, 11, 0.85);
         clip-path: polygon(
             0% var(--notchSize),
             var(--notchSize) 0%,

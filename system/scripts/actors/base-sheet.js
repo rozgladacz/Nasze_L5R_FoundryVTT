@@ -1,12 +1,12 @@
 /**
  * Base Sheet for Actor and Npc
  */
-export class BaseSheetL5r5e extends ActorSheet {
+export class BaseSheetL5r5e extends foundry.appv1.sheets.ActorSheet {
     /**
      * Commons options
      */
     static get defaultOptions() {
-        return mergeObject(super.defaultOptions, {
+        return foundry.utils.mergeObject(super.defaultOptions, {
             classes: ["l5r5e", "sheet", "actor"],
             // template: CONFIG.l5r5e.paths.templates + "actors/character-sheet.html",
             width: 600,
@@ -17,15 +17,76 @@ export class BaseSheetL5r5e extends ActorSheet {
     }
 
     /**
-     * Commons datas
-     * @override
+     * Add buttons to L5R specific bar
+     * @return {{label: string, class: string, icon: string, onclick: Function|null}[]}
      */
-    getData() {
-        const sheetData = super.getData();
+    _getL5rHeaderButtons() {
+        /**
+         * @var {{label: string, class: string, icon: string, onclick: Function|null}[]}
+         */
+        const buttons = [];
+
+        if (this.isEditable && !this.actor.limited) {
+            // Lock/Unlock
+            buttons.unshift({
+                label: `l5r5e.global.${this.actor.system.soft_locked ? "" : "un"}locked`,
+                class: "l5r-softlock",
+                icon: this.actor.system.soft_locked ? "fas fa-lock" : "fas fa-unlock",
+                onclick: () =>
+                    game.l5r5e.HelpersL5r5e.debounce(
+                        "lock-" + this.object.id,
+                        () => {
+                            this.actor.update({
+                                system: {
+                                    soft_locked: !this.actor.system.soft_locked,
+                                },
+                            });
+                        },
+                        500,
+                        true
+                    )(),
+            });
+        }
+
+        // Send To Chat
+        buttons.unshift({
+            label: "l5r5e.global.send_to_chat",
+            class: "send-to-chat",
+            icon: "fas fa-comment-dots",
+            onclick: () =>
+                game.l5r5e.HelpersL5r5e.debounce(
+                    "send2chat-" + this.object.id,
+                    () => game.l5r5e.HelpersL5r5e.sendToChat(this.object),
+                    2000,
+                    true
+                )(),
+        });
+
+        return buttons;
+    }
+
+    /** @inheritdoc */
+    async getData(options = {}) {
+        const sheetData = await super.getData(options);
+
+        // System Header Buttons
+        sheetData.l5rHeaderButtons = this._getL5rHeaderButtons();
 
         sheetData.data.dtypes = ["String", "Number", "Boolean"];
-        sheetData.data.stances = CONFIG.l5r5e.stances;
-        sheetData.data.techniquesList = CONFIG.l5r5e.techniques;
+
+        // Sort Items by name
+        sheetData.items.sort((a, b) => {
+            return a.name.localeCompare(b.name);
+        });
+
+        // Editors enrichment
+        sheetData.data.enrichedHtml = {
+            description: await foundry.applications.ux.TextEditor.implementation.enrichHTML(sheetData.data.system.description, { async: true }),
+            notes: await foundry.applications.ux.TextEditor.implementation.enrichHTML(sheetData.data.system.notes, { async: true }),
+        };
+
+        // Shortcut for some tests
+        sheetData.data.editable_not_soft_locked = sheetData.editable && !sheetData.data.system.soft_locked;
 
         return sheetData;
     }
@@ -49,10 +110,11 @@ export class BaseSheetL5r5e extends ActorSheet {
      * @override
      */
     activateEditor(name, options = {}, initialContent = "") {
-        if (name === "data.notes.value" && initialContent) {
+        // Symbols Compatibility with old compendium modules (PRE l5r v1.7.2)
+        if (["system.notes", "system.description"].includes(name) && initialContent) {
             initialContent = game.l5r5e.HelpersL5r5e.convertSymbols(initialContent, false);
         }
-        super.activateEditor(name, options, initialContent);
+        return super.activateEditor(name, options, initialContent);
     }
 
     /**
@@ -63,122 +125,36 @@ export class BaseSheetL5r5e extends ActorSheet {
      * @override
      */
     async _updateObject(event, formData) {
-        if (formData["data.notes.value"]) {
-            formData["data.notes.value"] = game.l5r5e.HelpersL5r5e.convertSymbols(formData["data.notes.value"], true);
+        // Remove autocomplete list name/index if exist
+        if (formData["autoCompleteListName"] || formData["autoCompleteListSelectedIndex"]) {
+            delete formData["autoCompleteListName"];
+            delete formData["autoCompleteListSelectedIndex"];
         }
         return super._updateObject(event, formData);
     }
 
     /**
-     * Handle dropped data on the Actor sheet
-     */
-    async _onDrop(event) {
-        // Check item type and subtype
-        const item = await game.l5r5e.HelpersL5r5e.getDragnDropTargetObject(event);
-        if (
-            !item ||
-            item.entity !== "Item" ||
-            !["item", "armor", "weapon", "technique", "peculiarity", "advancement"].includes(item.data.type)
-        ) {
-            return;
-        }
-
-        // Dropped a item with same "id" as one owned, add qte instead
-        if (item.data.data.quantity && this.actor.data.items) {
-            const tmpItem = this.actor.data.items.find((e) => e.name === item.name && e.type === item.type);
-            if (tmpItem && this._modifyQuantity(tmpItem._id, 1)) {
-                return;
-            }
-        }
-
-        // Item subtype specific
-        switch (item.data.type) {
-            case "advancement": // no break
-            case "peculiarity":
-                // Modify the bought at rank to the current actor rank
-                if (this.actor.data.data.identity?.school_rank) {
-                    item.data.data.bought_at_rank = this.actor.data.data.identity.school_rank;
-                }
-                break;
-
-            case "technique":
-                // School_ability and mastery_ability, allow only 1 per type
-                if (CONFIG.l5r5e.techniques_school.includes(item.data.data.technique_type)) {
-                    if (
-                        Array.from(this.actor.items).some(
-                            (e) =>
-                                e.type === "technique" && e.data.data.technique_type === item.data.data.technique_type
-                        )
-                    ) {
-                        ui.notifications.info(game.i18n.localize("l5r5e.techniques.only_one"));
-                        return;
-                    }
-
-                    // No cost for schools
-                    item.data.data.xp_cost = 0;
-                    item.data.data.xp_used = 0;
-                    item.data.data.in_curriculum = true;
-                } else {
-                    // Check if technique is allowed for this character
-                    if (!game.user.isGM && !this.actor.data.data.techniques[item.data.data.technique_type]) {
-                        ui.notifications.info(game.i18n.localize("l5r5e.techniques.not_allowed"));
-                        return;
-                    }
-
-                    // Verify cost
-                    item.data.data.xp_cost =
-                        item.data.data.xp_cost > 0 ? item.data.data.xp_cost : CONFIG.l5r5e.xp.techniqueCost;
-                    item.data.data.xp_used = item.data.data.xp_cost;
-                }
-
-                // Modify the bought at rank to the current actor rank
-                if (this.actor.data.data.identity?.school_rank) {
-                    item.data.data.bought_at_rank = this.actor.data.data.identity.school_rank;
-                }
-                break;
-        }
-
-        // Ok add item - Foundry override cause props
-        const allowed = Hooks.call("dropActorSheetData", this.actor, this, item);
-        if (allowed === false) {
-            return;
-        }
-        return this._onDropItem(event, item);
-    }
-
-    /**
      * Subscribe to events from the sheet.
-     * @param html HTML content of the sheet.
+     * @param {jQuery} html HTML content of the sheet.
      */
     activateListeners(html) {
         super.activateListeners(html);
 
-        // Toggle
-        html.find(".toggle-on-click").on("click", (event) => {
+        // Commons
+        game.l5r5e.HelpersL5r5e.commonListeners(html, this.actor);
+
+        // System Header Buttons
+        const l5rHeaderButtons = this._getL5rHeaderButtons();
+        html.find(".l5r-header-button").click((event) => {
             event.preventDefault();
-            event.stopPropagation();
-            const elmt = $(event.currentTarget).data("toggle");
-            const tgt = html.find("." + elmt);
-            tgt.hasClass("toggle-active") ? tgt.removeClass("toggle-active") : tgt.addClass("toggle-active");
+            const button = l5rHeaderButtons.find((b) => event.currentTarget.classList.contains(b.class));
+            button.onclick(event);
         });
 
         // *** Everything below here is only needed if the sheet is editable ***
-        if (!this.options.editable) {
+        if (!this.isEditable) {
             return;
         }
-
-        // *** Dice event on Skills clic ***
-        html.find(".dice-picker").on("click", (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            const li = $(event.currentTarget);
-            new game.l5r5e.DicePickerDialog({
-                skillId: li.data("skill") || null,
-                skillCatId: li.data("skillcat") || null,
-                difficulty: li.data("diff") || 2,
-                actor: this.actor,
-            }).render(true);
-        });
 
         // On focus on one numeric element, select all text for better experience
         html.find(".select-on-focus").on("focus", (event) => {
@@ -188,131 +164,101 @@ export class BaseSheetL5r5e extends ActorSheet {
         });
 
         // *** Items : add, edit, delete ***
-        html.find(".item-add").on("click", (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            this._addSubItem(event);
-        });
-        html.find(`.item-edit`).on("click", (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            this._editSubItem(event);
-        });
-        html.find(`.item-delete`).on("click", (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            this._deleteSubItem(event);
-        });
+        html.find(".item-add").on("click", this._addSubItem.bind(this));
+        html.find(`.item-edit`).on("click", this._editSubItem.bind(this));
+        html.find(`.item-delete`).on("click", this._deleteSubItem.bind(this));
     }
 
     /**
      * Add a generic item with sub type
+     * @param {string}      type           Item sub type (armor, weapon, bond...)
+     * @return {Promise<void>}
+     * @private
+     */
+    async _createSubItem({ type }) {
+        if (!type) {
+            return;
+        }
+
+        const created = await this.actor.createEmbeddedDocuments("Item", [
+            {
+                name: game.i18n.localize(`TYPES.Item.${type.toLowerCase()}`),
+                type: type,
+                img: `${CONFIG.l5r5e.paths.assets}icons/items/${type}.svg`,
+            },
+        ]);
+        if (created?.length < 1) {
+            return;
+        }
+        const item = this.actor.items.get(created[0].id);
+
+        item.sheet.render(true);
+    }
+
+    /**
+     * Add a generic item with sub type
+     * @param {Event} event
      * @private
      */
     async _addSubItem(event) {
-        const type = $(event.currentTarget).data("item-type");
-        const titles = {
-            item: "l5r5e.items.title_new",
-            armor: "l5r5e.armors.title_new",
-            weapon: "l5r5e.weapons.title_new",
-            technique: "l5r5e.techniques.title_new",
-            peculiarity: "l5r5e.peculiarities.title_new",
-            advancement: "l5r5e.advancements.title_new",
-        };
-        const created = await this.actor.createEmbeddedEntity("OwnedItem", {
-            name: game.i18n.localize(titles[type]),
-            type: type,
-            img: "icons/svg/mystery-man.svg",
-        });
-        const item = this.actor.getOwnedItem(created._id);
+        event.preventDefault();
+        event.stopPropagation();
 
-        // assign current school rank to the new adv/tech
-        if (this.actor.data.data.identity?.school_rank && ["advancement", "technique"].includes(item.data.type)) {
-            item.data.data.rank = this.actor.data.data.identity.school_rank;
-            item.data.data.bought_at_rank = this.actor.data.data.identity.school_rank;
+        const type = $(event.currentTarget).data("item-type");
+        if (!type) {
+            return;
         }
 
-        item.sheet.render(true);
+        return this._createSubItem({ type });
     }
 
     /**
      * Edit a generic item with sub type
+     * @param {Event} event
      * @private
      */
     _editSubItem(event) {
-        const itemId = $(event.currentTarget).data("item-id");
-        const item = this.actor.getOwnedItem(itemId);
-        item.sheet.render(true);
+        event.preventDefault();
+        event.stopPropagation();
+
+        game.l5r5e.HelpersL5r5e.getEmbedItemByEvent(event, this.actor).then((item) => {
+            if (item) {
+                item.sheet.render(true);
+            }
+        });
     }
 
     /**
      * Delete a generic item with sub type
+     * @param {Event} event
      * @private
      */
     _deleteSubItem(event) {
-        const itemId = $(event.currentTarget).data("item-id");
+        event.preventDefault();
+        event.stopPropagation();
 
-        // Remove 1 qty if possible
-        const tmpItem = this.actor.getOwnedItem(itemId);
-        if (tmpItem && tmpItem.data.data.quantity > 1 && this._modifyQuantity(tmpItem._id, -1)) {
+        const itemId = $(event.currentTarget).data("item-id");
+        if (!itemId) {
             return;
         }
 
-        // Specific advancements, remove 1 to selected ring/skill
-        if (tmpItem.type === "advancement") {
-            const actor = duplicate(this.actor.data.data);
-            const itmData = tmpItem.data.data;
-            if (itmData.advancement_type === "ring") {
-                // Ring
-                actor.rings[itmData.ring] = Math.max(1, actor.rings[itmData.ring] - 1);
-            } else {
-                // Skill
-                const skillCatId = CONFIG.l5r5e.skills.get(itmData.skill);
-                if (skillCatId) {
-                    actor.skills[skillCatId][itmData.skill] = Math.max(0, actor.skills[skillCatId][itmData.skill] - 1);
-                }
-            }
-
-            // Update Actor
-            this.actor.update({
-                data: diffObject(this.actor.data.data, actor),
-            });
+        const tmpItem = this.actor.items.get(itemId);
+        if (!tmpItem) {
+            return;
         }
 
-        return this.actor.deleteOwnedItem(itemId);
-    }
+        const callback = async () => {
+            return this.actor.deleteEmbeddedDocuments("Item", [itemId]);
+        };
 
-    /**
-     * Switch "in_curriculum"
-     * @private
-     */
-    _switchSubItemCurriculum(event) {
-        const itemId = $(event.currentTarget).data("item-id");
-        const item = this.actor.getOwnedItem(itemId);
-        if (item.type !== "item") {
-            item.update({
-                data: {
-                    in_curriculum: !item.data.data.in_curriculum,
-                },
-            });
+        // Holing Ctrl = without confirm
+        if (event.ctrlKey) {
+            return callback();
         }
-    }
 
-    /**
-     * Add or subtract a quantity to a owned item
-     * @private
-     */
-    _modifyQuantity(itemId, add) {
-        const tmpItem = this.actor.getOwnedItem(itemId);
-        if (tmpItem) {
-            tmpItem.data.data.quantity = Math.max(1, tmpItem.data.data.quantity + add);
-            tmpItem.update({
-                data: {
-                    quantity: tmpItem.data.data.quantity,
-                },
-            });
-            return true;
-        }
-        return false;
+        game.l5r5e.HelpersL5r5e.confirmDeleteDialog(
+            game.i18n.format("l5r5e.global.delete_confirm", { name: tmpItem.name }),
+            callback
+        );
     }
 }

@@ -4,18 +4,21 @@ import { HelpersL5r5e } from "./helpers.js";
 import { SocketHandlerL5r5e } from "./socket-handler.js";
 import { RegisterSettings } from "./settings.js";
 import { PreloadTemplates } from "./preloadTemplates.js";
-import { HelpDialog } from "./help/help-dialog.js";
+import { RegisterHandlebars } from "./handlebars.js";
+import HooksL5r5e from "./hooks.js";
 // Actors
 import { ActorL5r5e } from "./actor.js";
 import { CharacterSheetL5r5e } from "./actors/character-sheet.js";
 import { NpcSheetL5r5e } from "./actors/npc-sheet.js";
+import { ArmySheetL5r5e } from "./actors/army-sheet.js";
 // Dice and rolls
+import { L5rBaseDie } from "./dice/dietype/l5r-base-die.js";
 import { AbilityDie } from "./dice/dietype/ability-die.js";
 import { RingDie } from "./dice/dietype/ring-die.js";
 import { RollL5r5e } from "./dice/roll.js";
 import { DicePickerDialog } from "./dice/dice-picker-dialog.js";
 import { RollnKeepDialog } from "./dice/roll-n-keep-dialog.js";
-import { _sortCombatants, rollInitiative } from "./combat.js";
+import { CombatL5r5e } from "./combat.js";
 // Items
 import { ItemL5r5e } from "./item.js";
 import { ItemSheetL5r5e } from "./items/item-sheet.js";
@@ -25,14 +28,29 @@ import { TechniqueSheetL5r5e } from "./items/technique-sheet.js";
 import { PropertySheetL5r5e } from "./items/property-sheet.js";
 import { AdvancementSheetL5r5e } from "./items/advancement-sheet.js";
 import { PeculiaritySheetL5r5e } from "./items/peculiarity-sheet.js";
+import { TitleSheetL5r5e } from "./items/title-sheet.js";
+import { BondSheetL5r5e } from "./items/bond-sheet.js";
+import { SignatureScrollSheetL5r5e } from "./items/signature-scroll-sheet.js";
+import { ItemPatternSheetL5r5e } from "./items/item-pattern-sheet.js";
+import { ArmyCohortSheetL5r5e } from "./items/army-cohort-sheet.js";
+import { ArmyFortificationSheetL5r5e } from "./items/army-fortification-sheet.js";
 // JournalEntry
 import { JournalL5r5e } from "./journal.js";
 import { BaseJournalSheetL5r5e } from "./journals/base-journal-sheet.js";
+// Specific
+import { MigrationL5r5e } from "./migration.js";
+import { GmToolbox } from "./gm/gm-toolbox.js";
+import { GmMonitor } from "./gm/gm-monitor.js";
+import { Storage } from "./storage.js";
+// Misc
+import { L5r5eHtmlMultiSelectElement } from "./misc/l5r5e-multiselect.js";
+
+window.customElements.define(L5r5eHtmlMultiSelectElement.tagName, L5r5eHtmlMultiSelectElement);
 
 /* ------------------------------------ */
 /* Initialize system                    */
 /* ------------------------------------ */
-Hooks.once("init", async function () {
+Hooks.once("init", async () => {
     // ***** Initializing l5r5e *****
     // Ascii art :p
     console.log(
@@ -48,240 +66,202 @@ Hooks.once("init", async function () {
     CONFIG.l5r5e = L5R5E;
 
     // Assign custom classes and constants here
-    CONFIG.Actor.entityClass = ActorL5r5e;
+    CONFIG.Combat.documentClass = CombatL5r5e;
+    CONFIG.Actor.documentClass = ActorL5r5e;
     CONFIG.Actor.sheetClasses = CharacterSheetL5r5e;
-    CONFIG.Item.entityClass = ItemL5r5e;
-    CONFIG.JournalEntry.entityClass = JournalL5r5e;
+    CONFIG.Item.documentClass = ItemL5r5e;
+    CONFIG.JournalEntry.documentClass = JournalL5r5e;
     CONFIG.JournalEntry.sheetClass = BaseJournalSheetL5r5e;
 
     // Define custom Roll class
-    CONFIG.Dice.rolls.push(CONFIG.Dice.rolls[0]);
-    CONFIG.Dice.rolls[0] = RollL5r5e;
+    CONFIG.Dice.rolls.unshift(RollL5r5e);
 
     // Define DiceTerms
-    CONFIG.Dice.terms["s"] = AbilityDie;
-    CONFIG.Dice.terms["r"] = RingDie;
+    CONFIG.Dice.terms[AbilityDie.DENOMINATION] = AbilityDie;
+    CONFIG.Dice.terms[RingDie.DENOMINATION] = RingDie;
 
     // Add some classes in game
     game.l5r5e = {
+        L5rBaseDie,
+        RingDie,
+        AbilityDie,
         HelpersL5r5e,
+        ItemL5r5e,
+        JournalL5r5e,
         RollL5r5e,
+        ActorL5r5e,
         DicePickerDialog,
         RollnKeepDialog,
-        HelpDialog,
+        GmToolbox,
+        GmMonitor,
+        storage: new Storage(),
         sockets: new SocketHandlerL5r5e(),
+        migrations: MigrationL5r5e,
     };
 
     // Register custom system settings
     RegisterSettings();
 
-    // Preload Handlebars templates
-    await PreloadTemplates();
+    // Register custom Handlebars Helpers
+    RegisterHandlebars();
 
-    // ***** Combat *****
-    Combat.prototype.rollInitiative = rollInitiative;
-    Combat.prototype._sortCombatants = _sortCombatants;
-    // game.combat.settings.resource = "fatigue.value"; // nope :/
+    // Preload Handlebars templates (Important : Do not await ! It's sometime break the css in clients)
+    PreloadTemplates().then(() => {});
 
     // ***** Register custom sheets *****
+    const fdc = foundry.documents.collections;
+    const fav1s = foundry.appv1.sheets;
+
     // Actors
-    Actors.unregisterSheet("core", ActorSheet);
-    Actors.registerSheet("l5r5e", CharacterSheetL5r5e, { types: ["character"], makeDefault: true });
-    Actors.registerSheet("l5r5e", NpcSheetL5r5e, { types: ["npc"], makeDefault: true });
+    fdc.Actors.unregisterSheet("core", fav1s.ActorSheet);
+    fdc.Actors.registerSheet(L5R5E.namespace, CharacterSheetL5r5e, {
+        types: ["character"],
+        label: "TYPES.Actor.character",
+        makeDefault: true,
+    });
+    fdc.Actors.registerSheet(L5R5E.namespace, NpcSheetL5r5e, {
+        types: ["npc"],
+        label: "TYPES.Actor.npc",
+        makeDefault: true,
+    });
+    fdc.Actors.registerSheet(L5R5E.namespace, ArmySheetL5r5e, {
+        types: ["army"],
+        label: "TYPES.Actor.army",
+        makeDefault: true,
+    });
 
     // Items
-    Items.unregisterSheet("core", ItemSheet);
-    Items.registerSheet("l5r5e", ItemSheetL5r5e, { types: ["item"], makeDefault: true });
-    Items.registerSheet("l5r5e", ArmorSheetL5r5e, { types: ["armor"], makeDefault: true });
-    Items.registerSheet("l5r5e", WeaponSheetL5r5e, { types: ["weapon"], makeDefault: true });
-    Items.registerSheet("l5r5e", TechniqueSheetL5r5e, { types: ["technique"], makeDefault: true });
-    Items.registerSheet("l5r5e", PropertySheetL5r5e, { types: ["property"], makeDefault: true });
-    Items.registerSheet("l5r5e", PeculiaritySheetL5r5e, { types: ["peculiarity"], makeDefault: true });
-    Items.registerSheet("l5r5e", AdvancementSheetL5r5e, { types: ["advancement"], makeDefault: true });
+    fdc.Items.unregisterSheet("core", fav1s.ItemSheet);
+    fdc.Items.registerSheet(L5R5E.namespace, ItemSheetL5r5e, {
+        types: ["item"],
+        label: "TYPES.Item.item",
+        makeDefault: true,
+    });
+    fdc.Items.registerSheet(L5R5E.namespace, ArmorSheetL5r5e, {
+        types: ["armor"],
+        label: "TYPES.Item.armor",
+        makeDefault: true,
+    });
+    fdc.Items.registerSheet(L5R5E.namespace, WeaponSheetL5r5e, {
+        types: ["weapon"],
+        label: "TYPES.Item.weapon",
+        makeDefault: true,
+    });
+    fdc.Items.registerSheet(L5R5E.namespace, TechniqueSheetL5r5e, {
+        types: ["technique"],
+        label: "TYPES.Item.technique",
+        makeDefault: true,
+    });
+    fdc.Items.registerSheet(L5R5E.namespace, PropertySheetL5r5e, {
+        types: ["property"],
+        label: "TYPES.Item.property",
+        makeDefault: true,
+    });
+    fdc.Items.registerSheet(L5R5E.namespace, PeculiaritySheetL5r5e, {
+        types: ["peculiarity"],
+        label: "TYPES.Item.peculiarity",
+        makeDefault: true,
+    });
+    fdc.Items.registerSheet(L5R5E.namespace, AdvancementSheetL5r5e, {
+        types: ["advancement"],
+        label: "TYPES.Item.advancement",
+        makeDefault: true,
+    });
+    fdc.Items.registerSheet(L5R5E.namespace, TitleSheetL5r5e, {
+        types: ["title"],
+        label: "TYPES.Item.title",
+        makeDefault: true,
+    });
+    fdc.Items.registerSheet(L5R5E.namespace, BondSheetL5r5e, {
+        types: ["bond"],
+        label: "TYPES.Item.bond",
+        makeDefault: true,
+    });
+    fdc.Items.registerSheet(L5R5E.namespace, SignatureScrollSheetL5r5e, {
+        types: ["signature_scroll"],
+        label: "TYPES.Item.signature_scroll",
+        makeDefault: true,
+    });
+    fdc.Items.registerSheet(L5R5E.namespace, ItemPatternSheetL5r5e, {
+        types: ["item_pattern"],
+        label: "TYPES.Item.item_pattern",
+        makeDefault: true,
+    });
+    fdc.Items.registerSheet(L5R5E.namespace, ArmyCohortSheetL5r5e, {
+        types: ["army_cohort"],
+        label: "TYPES.Item.army_cohort",
+        makeDefault: true,
+    });
+    fdc.Items.registerSheet(L5R5E.namespace, ArmyFortificationSheetL5r5e, {
+        types: ["army_fortification"],
+        label: "TYPES.Item.army_fortification",
+        makeDefault: true,
+    });
 
     // Journal
-    Items.unregisterSheet("core", JournalSheet);
-    Items.registerSheet("l5r5e", BaseJournalSheetL5r5e, { makeDefault: true });
-
-    // ***** Handlebars *****
-    // for debug
-    Handlebars.registerHelper("json", function (...objects) {
-        objects.pop(); // remove this function call
-        return new Handlebars.SafeString(objects.map((e) => `<textarea>${JSON.stringify(e)}</textarea>`));
+    fdc.Journal.unregisterSheet("core", fav1s.JournalSheet);
+    fdc.Journal.registerSheet(L5R5E.namespace, BaseJournalSheetL5r5e, {
+        label: "TYPES.Journal.journal",
+        makeDefault: true,
     });
 
-    // Add props "checked" if a and b are equal ({{radioChecked a b}}
-    Handlebars.registerHelper("radioChecked", function (a, b) {
-        return a === b ? new Handlebars.SafeString('checked="checked"') : "";
-    });
+    // Override enrichHTML for Symbol replacement
+    const oldEnrichHTML = foundry.applications.ux.TextEditor.implementation.prototype.constructor.enrichHTML;
+    foundry.applications.ux.TextEditor.implementation.prototype.constructor.enrichHTML = async function (content, options = {}) {
+        return HelpersL5r5e.convertSymbols(await oldEnrichHTML.call(this, content, options), true);
+    };
 
-    Handlebars.registerHelper("localizeSkill", function (categoryId, skillId) {
-        const key = "l5r5e.skills." + categoryId.toLowerCase() + "." + skillId.toLowerCase();
-        return game.i18n.localize(key);
-    });
-    Handlebars.registerHelper("localizeSkillId", function (skillId) {
-        const key = "l5r5e.skills." + L5R5E.skills.get(skillId.toLowerCase()) + "." + skillId.toLowerCase();
-        return game.i18n.localize(key);
-    });
+    // Override the default Token _drawBar function to allow fatigue bar reversing.
+    foundry.canvas.placeables.Token.prototype._drawBar = function (number, bar, data) {
+        const barSettings = game.settings.get(L5R5E.namespace, "token-reverse-token-bars");
+        const reverseBar = barSettings === 'both' || barSettings === data.attribute;
 
-    Handlebars.registerHelper("localizeRing", function (ringId) {
-        const key = "l5r5e.rings." + ringId.toLowerCase();
-        return game.i18n.localize(key);
-    });
+        // Bar value
+        const pct = Math.clamp(Number(data.value), 0, data.max) / data.max;
 
-    Handlebars.registerHelper("localizeStanceTip", function (ringId) {
-        const key = "l5r5e.conflict.stances." + ringId.toLowerCase() + "tip";
-        return game.i18n.localize(key);
-    });
+        // Modify color
+        let color = number === 0 ? [pct / 1.2, 1 - pct, 0] : [0.5 * pct, 0.7 * pct, 0.5 + pct / 2];
 
-    Handlebars.registerHelper("localizeTechnique", function (techniqueName) {
-        return game.i18n.localize("l5r5e.techniques." + techniqueName.toLowerCase());
-    });
-
-    // Utility conditional, usable in nested expression
-    // {{#ifCond (ifCond advancement.type '==' 'technique') '||' (ifCond item.data.technique_type '==' 'kata')}}
-    // {{#ifCond '["distinction","passion"]' 'includes' item.data.peculiarity_type}}
-    Handlebars.registerHelper("ifCond", function (a, operator, b, options) {
-        let result = false;
-        switch (operator) {
-            case "==":
-                result = a == b;
-                break;
-            case "===":
-                result = a === b;
-                break;
-            case "!=":
-                result = a != b;
-                break;
-            case "!==":
-                result = a !== b;
-                break;
-            case "<":
-                result = a < b;
-                break;
-            case "<=":
-                result = a <= b;
-                break;
-            case ">":
-                result = a > b;
-                break;
-            case ">=":
-                result = a >= b;
-                break;
-            case "&&":
-                result = a && b;
-                break;
-            case "||":
-                result = a || b;
-                break;
-            case "includes":
-                result = a && b && a.includes(b);
-                break;
-            default:
-                break;
+        // Red if compromised
+        if (data.attribute === "strife" && data.value > data.max) {
+            color = [1, 0.1, 0.1];
         }
-        if (typeof options.fn === "function") {
-            return result ? options.fn(this) : options.inverse(this);
+
+        // Enlarge the bar for large tokens
+        let h = Math.max(canvas.dimensions.size / 12, 8);
+        if (this.height >= 2) {
+            h *= 1.6;
         }
-        return result;
-    });
+
+        // Draw the bar
+        bar.clear()
+            .beginFill(0x000000, 0.5)
+            .lineStyle(2, 0x000000, 0.9)
+            .drawRoundedRect(0, 0, this.w, h, 3)
+            .beginFill(PIXI.utils.rgb2hex(color), 0.8)
+            .lineStyle(1, 0x000000, 0.8)
+            .drawRoundedRect(1, 1, (reverseBar ? 1 - pct : pct) * (this.w - 2), h - 2, 2);
+
+        // Set position
+        bar.position.set(0, number === 0 ? this.h - h : 0);
+    };
 });
 
 /* ------------------------------------ */
-/* Setup system                         */
+/* Hooks Once                           */
 /* ------------------------------------ */
-Hooks.once("setup", function () {
-    // Do anything after initialization but before ready
-    // Embed Babele compendiums
-    /* eslint-disable no-undef */
-    if (
-        typeof Babele !== "undefined" &&
-        Babele.get().modules.every((module) => module.lang !== "fr" || module.module !== "l5r5e-dev")
-    ) {
-        Babele.get().register({
-            module: "../systems/l5r5e", // babele only accept modules, so... well :D
-            lang: "fr",
-            dir: "babele/fr-fr",
-        });
-    }
-});
+Hooks.once("setup", HooksL5r5e.setup);
+Hooks.once("ready", HooksL5r5e.ready);
+Hooks.once("init", HooksL5r5e.init);
+Hooks.once("diceSoNiceReady", (dice3d) => HooksL5r5e.diceSoNiceReady(dice3d));
 
 /* ------------------------------------ */
-/* Do anything once the system is ready */
+/* Hooks On                             */
 /* ------------------------------------ */
-Hooks.once("ready", function () {
-    // Add title on button dice icon
-    $(".chat-control-icon")[0].title = game.i18n.localize("l5r5e.chatdices.dicepicker");
-
-    // Open Help dialog on clic on logo
-    $("#logo")
-        .on("click", () => new game.l5r5e.HelpDialog().render(true))
-        .prop("title", game.i18n.localize("l5r5e.logo.alt"));
-});
-
-/* ------------------------------------ */
-/* SidebarTab                           */
-/* ------------------------------------ */
-Hooks.on("renderSidebarTab", (app, html, data) => {
-    // Add button on dice icon
-    html.find(".chat-control-icon").click(async () => {
-        new game.l5r5e.DicePickerDialog().render();
-    });
-});
-
-/* ------------------------------------ */
-/* Chat Message                         */
-/* ------------------------------------ */
-Hooks.on("renderChatMessage", (message, html, data) => {
-    // Add a extra CSS class to roll
-    if (message.isRoll) {
-        html.addClass("roll");
-        html.on("click", ".chat-dice-rnk", RollnKeepDialog.onChatAction.bind(this));
-    }
-});
-
-/* ------------------------------------ */
-/* DiceSoNice Hook                      */
-/* ------------------------------------ */
-Hooks.once("diceSoNiceReady", (dice3d) => {
-    const texturePath = `${CONFIG.l5r5e.paths.assets}dices/default/3d/`;
-
-    // dice3d.addSystem({
-    //     id: "l5r5e",
-    //     name: "Legend of the Five Rings 5E"
-    // }, "force");
-
-    // Rings
-    dice3d.addDicePreset(
-        {
-            name: "L5R Ring Dice",
-            type: "ddr", // don't known why the "dd" prefix is required, term is "r"
-            labels: Object.keys(RingDie.FACES).map(
-                (e) => `${texturePath}${RingDie.FACES[e].image.replace("ring_", "")}.png`
-            ),
-            bumpMaps: Object.keys(RingDie.FACES).map(
-                (e) => `${texturePath}${RingDie.FACES[e].image.replace("ring_", "")}_bm.png`
-            ),
-            colorset: "black",
-            system: "standard",
-        },
-        "d6"
-    );
-
-    // Skills
-    dice3d.addDicePreset(
-        {
-            name: "L5R Skill Dice",
-            type: "dds",
-            labels: Object.keys(AbilityDie.FACES).map(
-                (e) => `${texturePath}${AbilityDie.FACES[e].image.replace("skill_", "")}.png`
-            ),
-            bumpMaps: Object.keys(AbilityDie.FACES).map(
-                (e) => `${texturePath}${AbilityDie.FACES[e].image.replace("skill_", "")}_bm.png`
-            ),
-            colorset: "white",
-            system: "standard",
-        },
-        "d12"
-    );
-});
+Hooks.on("renderSidebarTab", (app, html, data) => HooksL5r5e.renderSidebarTab(app, html, data));
+Hooks.on("activateSettings", async (app)=> HooksL5r5e.activateSettings(app));
+Hooks.on("renderChatMessageHTML", (message, html, data) => HooksL5r5e.renderChatMessage(message, html, data));
+Hooks.on("renderCombatTracker", (app, html, data) => HooksL5r5e.renderCombatTracker(app, html, data));
+Hooks.on("renderCompendium", async (app, html, data) => HooksL5r5e.renderCompendium(app, html, data));
+Hooks.on("diceSoNiceRollStart", (messageId, context) => HooksL5r5e.diceSoNiceRollStart(messageId, context));
+Hooks.on("updateCompendium", (pack, documents, options, userId) => HooksL5r5e.updateCompendium(pack, documents, options, userId));

@@ -12,17 +12,14 @@ export class PeculiaritySheetL5r5e extends ItemSheetL5r5e {
 
     /** @override */
     static get defaultOptions() {
-        return mergeObject(super.defaultOptions, {
+        return foundry.utils.mergeObject(super.defaultOptions, {
             classes: ["l5r5e", "sheet", "peculiarity"],
             template: CONFIG.l5r5e.paths.templates + "items/peculiarity/peculiarity-sheet.html",
-            width: 520,
-            height: 480,
-            tabs: [{ navSelector: ".sheet-tabs", contentSelector: ".sheet-body", initial: "description" }],
         });
     }
 
-    async getData() {
-        const sheetData = await super.getData();
+    async getData(options = {}) {
+        const sheetData = await super.getData(options);
 
         sheetData.data.subTypesList = PeculiaritySheetL5r5e.types.map((e) => ({
             id: e,

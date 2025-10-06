@@ -1,6 +1,9 @@
 // Item List
 .item-list {
     flex: 100%;
+    .tab[data-tab] {
+        display: none;
+    }
     .item {
         .item-header {
             display: flex;
@@ -8,7 +11,7 @@
                 flex: 0 0 32px;
                 padding-right: 0.25rem;
                 img {
-                    border: 1px solid rgba(0, 0, 0, 0.1);
+                    border: none;
                 }
             }
             .item-name {
@@ -16,9 +19,14 @@
                 font-size: 1rem;
                 line-height: 1rem;
                 color: $l5r5e-bold;
+                align-content: center;
+            }
+            .removed {
+                text-decoration-line: line-through;
             }
             .item-edit,
             .item-delete,
+            .item-equip,
             .technique-edit,
             .technique-delete,
             .peculiarity-edit,
@@ -29,6 +37,7 @@
                 font-size: 0.75rem;
                 flex: 0 0 1rem;
                 padding: 0 0.1rem;
+                color: $black-light;
             }
             .icon-stat-container {
                 line-height: 1rem;
@@ -38,6 +47,7 @@
             }
             .item-edit,
             .item-delete,
+            .item-equip,
             .technique-edit,
             .technique-delete,
             .peculiarity-edit,
@@ -46,6 +56,7 @@
             .property-delete {
                 &:hover {
                     text-shadow: 0 0 3px $red;
+                    color: $black;
                 }
             }
         }
@@ -68,6 +79,12 @@
                     margin-right: 0;
                 }
             }
+            .equip-readied-control {
+                &:hover {
+                    color: $l5r5e-red;
+                    background: $white;
+                }
+            }
         }
         p {
             font-size: 0.85rem;
@@ -85,11 +102,17 @@
 }
 // Advancement Sheet, Armor Sheet, Item Sheet, Peculiarity Sheet, Property Sheet, Technique Sheet, Weapon Sheet
 &.advancement,
+&.army-cohort,
+&.army-fortification,
 &.armor,
+&.bond,
 &.item,
+&.item-pattern,
 &.peculiarity,
 &.property,
+&.signature-scroll,
 &.technique,
+&.title,
 &.weapon {
     .sheet-header {
         margin-bottom: 0.5rem;
@@ -106,7 +129,7 @@
         }
     }
     fieldset {
-        input[name="data.effects"] {
+        input[name="system.effects"] {
             text-align: left;
         }
     }
@@ -135,10 +158,10 @@
                 flex: 0 0 calc(40% - 2rem);
                 margin: 0.25rem;
             }
-            select[name="data.skill"],
-            select[name="data.ring"],
-            select[name="data.peculiarity_type"],
-            select[name="data.technique_type"] {
+            select[name="system.skill"],
+            select[name="system.ring"],
+            select[name="system.peculiarity_type"],
+            select[name="system.technique_type"] {
                 flex: 0 0 calc(40% - 0.5rem);
                 margin: 0.25rem;
             }
@@ -148,8 +171,8 @@
                 flex: 1 1 auto;
                 margin: 0.5rem 0.25rem 0.25rem;
             }
-            select[name="data.advancement_type"],
-            select[name="data.skill"] {
+            select[name="system.advancement_type"],
+            select[name="system.skill"] {
                 text-transform: capitalize;
             }
             .type {
@@ -172,11 +195,11 @@
             input[type="number"] {
                 width: 2rem;
                 &.grip {
-                    width: 100%;
+                    width: calc(100% - 4rem);
                     margin-bottom: 0.25rem;
                 }
             }
-            input[name="data.zeni"] {
+            input[name="system.zeni"] {
                 width: 7rem;
                 float: right;
             }
@@ -195,6 +218,13 @@
                     }
                 }
             }
+            .bonds-types {
+                flex: 100%;
+                input {
+                    width: 75%;
+                    float: right;
+                }
+            }
         }
         &.infos {
             display: flex;
@@ -203,11 +233,15 @@
             width: 100%;
             padding-bottom: 1.25rem;
             .reference {
+                display: flex;
                 flex: 0 0 calc(100% - 0.5rem);
                 margin: 0.5rem 0.25rem;
-                input[name="data.book_reference"] {
-                    float: right;
+                input[name="system.source_reference.source"] {
+                    text-align: center;
                     width: 70%;
+                }
+                input[name="system.source_reference.page"] {
+                    width: 30%;
                 }
             }
             fieldset {
@@ -243,10 +277,13 @@
         }
     }
 }
-&.peculiarity,
 &.technique {
     article {
         &.attributes {
+            height: 7.5rem;
+            input[type="text"] {
+                width: 10rem;
+            }
             .cursus {
                 flex: 0 0 calc(20% - 0.5rem);
                 line-height: 0.75rem;
@@ -257,12 +294,24 @@
                 }
             }
         }
+        &.infos {
+            height: calc(100% - 8.5rem);
+        }
     }
 }
 &.peculiarity {
     article {
         &.attributes {
             height: 8.5rem;
+            .cursus {
+                flex: 0 0 calc(20% - 0.5rem);
+                line-height: 0.75rem;
+                text-align: right;
+                margin: 0 0.25rem;
+                input {
+                    margin-top: 0.25rem;
+                }
+            }
         }
         &.infos {
             height: calc(100% - 9.5rem);
@@ -289,8 +338,11 @@
 }
 &.property {
     article {
+        &.properties {
+            width: 100%;
+        }
         &.infos {
-            height: calc(100% - 0.5rem);
+            height: calc(100% - 4.5rem);
         }
     }
 }
@@ -322,6 +374,11 @@
                     width: 100%;
                 }
             }
+            .stats {
+                input[type="text"] {
+                    text-align: center;
+                }
+            }
             .value {
                 flex: 0 0 calc(25% - 0.5rem);
             }
@@ -342,6 +399,86 @@
         &.properties {
             flex: 0 0 40%;
             height: calc(100% - 19.5rem);
+        }
+    }
+}
+&.item-pattern {
+    .attribute {
+        &.item {
+            display: inline;
+            .item-properties {
+                display: inline;
+                li {
+                    display: inline;
+                }
+            }
+        }
+    }
+}
+&.title {
+    .sheet-body {
+        height: calc(100% - 90px - 4.25rem);
+    }
+    article {
+        &.infos {
+            height: calc(100% - 3.5rem);
+        }
+        &.attributes {
+            height: auto;
+            background: transparent;
+        }
+        &.experience {
+            flex: 100%;
+            height: calc(100% - 4rem);
+        }
+    }
+}
+&.army-cohort {
+    .sheet-body {
+        height: calc(100% - 92px - 3.6rem);
+    }
+    article {
+        .fa-sign-in-alt {
+            transform: rotate(90deg);
+        }
+        &.attributes {
+            height: 7rem;
+            input[type="text"] {
+                width: 100%;
+            }
+            .actor-remove-control {
+                font-size: 12px;
+            }
+            .flx50 {
+                flex: 0 0 calc(50% - 0.5rem);
+            }
+            .flx100 {
+                flex: 0 0 calc(100% - 0.5rem);
+            }
+            .editor-container {
+                min-height: 8rem;
+                max-height: 14rem;
+            }
+        }
+        &.abilities {
+            align-self: stretch;
+            height: calc(100% - 8rem);
+            width: 100%;
+            box-sizing: content-box;
+        }
+    }
+}
+
+&.army-fortification {
+    .sheet-body {
+        height: calc(100% - 92px);
+    }
+    article {
+        &.infos {
+            height: calc(100% - 4.5rem);
+        }
+        &.attributes {
+            height: 3.5rem;
         }
     }
 }
@@ -366,17 +503,6 @@
                 padding: 0;
             }
         }
-        .toggle-active {
-            height: 6rem;
-            overflow-y: auto;
-            scrollbar-width: thin;
-            border: 1px solid $l5r5e-title;
-        }
-        p {
-            &.toggle-active {
-                padding: 0.25rem;
-            }
-        }
         &:hover,
         &:active {
             .item-description {
@@ -397,7 +523,7 @@
             display: none;
             height: auto;
         }
-        .toggle-active {
+        .stance-active {
             display: block;
             height: auto;
             border: 0 none;
@@ -407,7 +533,7 @@
                 height: auto;
                 border: 0 none;
             }
-            .toggle-active {
+            .stance-active {
                 display: block;
             }
         }

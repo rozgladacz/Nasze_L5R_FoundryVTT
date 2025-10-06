@@ -32,7 +32,7 @@ export class TwentyQuestionsDialog extends FormApplication {
      * @override
      */
     static get defaultOptions() {
-        return mergeObject(super.defaultOptions, {
+        return foundry.utils.mergeObject(super.defaultOptions, {
             id: "l5r5e-twenty-questions-dialog",
             classes: ["l5r5e", "twenty-questions-dialog"],
             template: CONFIG.l5r5e.paths.templates + "actors/twenty-questions-dialog.html",
@@ -51,7 +51,7 @@ export class TwentyQuestionsDialog extends FormApplication {
      * Define a unique and dynamic element ID for the rendered ActorSheet application
      */
     get id() {
-        return `l5r5e-twenty-questions-dialog-${this.actor._id}`;
+        return `l5r5e-twenty-questions-dialog-${this.actor.id}`;
     }
 
     /**
@@ -69,7 +69,7 @@ export class TwentyQuestionsDialog extends FormApplication {
         if (!this.actor) {
             return;
         }
-        this._initialize(game.actors.get(this.actor._id));
+        this._initialize(game.actors.get(this.actor.id));
         await this._constructCache();
         this.render(false);
     }
@@ -101,25 +101,34 @@ export class TwentyQuestionsDialog extends FormApplication {
      */
     _createDragDropHandlers() {
         return [
-            new DragDrop({
+            new foundry.applications.ux.DragDrop.implementation({
                 dragSelector: ".item",
                 dropSelector: ".items",
-                permissions: { dragstart: this._canDragStart.bind(this), drop: this._canDragDrop.bind(this) },
+                permissions: { dragstart: this.isEditable, drop: this.isEditable },
                 callbacks: { dragstart: this._onDragStart.bind(this), drop: this._onDropItem.bind(this, "item") },
             }),
-            new DragDrop({
+            new foundry.applications.ux.DragDrop.implementation({
                 dragSelector: ".technique",
                 dropSelector: ".techniques",
-                permissions: { dragstart: this._canDragStart.bind(this), drop: this._canDragDrop.bind(this) },
+                permissions: { dragstart: this.isEditable, drop: this.isEditable },
                 callbacks: { dragstart: this._onDragStart.bind(this), drop: this._onDropItem.bind(this, "technique") },
             }),
-            new DragDrop({
+            new foundry.applications.ux.DragDrop.implementation({
                 dragSelector: ".peculiarity",
                 dropSelector: ".peculiarities",
-                permissions: { dragstart: this._canDragStart.bind(this), drop: this._canDragDrop.bind(this) },
+                permissions: { dragstart: this.isEditable, drop: this.isEditable },
                 callbacks: {
                     dragstart: this._onDragStart.bind(this),
                     drop: this._onDropItem.bind(this, "peculiarity"),
+                },
+            }),
+            new foundry.applications.ux.DragDrop.implementation({
+                dragSelector: ".bond",
+                dropSelector: ".bonds",
+                permissions: { dragstart: this.isEditable, drop: this.isEditable },
+                callbacks: {
+                    dragstart: this._onDragStart.bind(this),
+                    drop: this._onDropItem.bind(this, "bond"),
                 },
             }),
         ];
@@ -136,37 +145,40 @@ export class TwentyQuestionsDialog extends FormApplication {
         const skillsListStep7 = this._getSkillZero(skillsList, skillsPoints, "step7.skill");
         const skillsListStep17 = this._getSkillZero(skillsList, skillsPoints, "step17.skill");
         return {
-            ...super.getData(options),
+            ...(await super.getData(options)),
             ringsList: game.l5r5e.HelpersL5r5e.getRingsList(),
             skillsList,
             skillsListStep7,
             skillsListStep17,
-            noHonorSkillsList: ["commerce", "skulduggery", "medicine", "seafaring", "survival", "labor"],
-            techniquesList: CONFIG.l5r5e.techniques,
+            noHonorSkillsList: CONFIG.l5r5e.noHonorSkillsList.map(id => ({
+                id,
+                label: game.i18n.localize("l5r5e.skills." + CONFIG.l5r5e.skills.get(id.toLowerCase()) + "." + id.toLowerCase())
+            })),
+            techniquesList: game.l5r5e.HelpersL5r5e.getTechniquesList({ displayInTypes: true }),
             data: this.object.data,
             cache: this.cache,
             summary: {
                 ...this.summary,
                 errors: this.summary.errors.join(", "),
             },
+            templates: [
+                { id: "core", label: game.i18n.localize("l5r5e.twenty_questions.part0.type_core") },
+                { id: "pow", label: game.i18n.localize("l5r5e.twenty_questions.part0.type_pow") },
+            ],
+            suffix: this.object.data.template === "pow" ? "_pow" : "",
         };
     }
 
     /**
      * Listen to html elements
+     * @param {jQuery} html HTML content of the sheet.
      * @override
      */
     activateListeners(html) {
         super.activateListeners(html);
 
-        // Toggle
-        html.find(".toggle-on-click").on("click", (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            const elmt = $(event.currentTarget).data("toggle");
-            const tgt = html.find("." + elmt);
-            tgt.hasClass("toggle-active") ? tgt.removeClass("toggle-active") : tgt.addClass("toggle-active");
-        });
+        // Commons
+        game.l5r5e.HelpersL5r5e.commonListeners(html, this.actor);
 
         // BT Next
         html.find(".next").on("click", (event) => {
@@ -179,7 +191,7 @@ export class TwentyQuestionsDialog extends FormApplication {
         });
 
         // *** Everything below here is only needed if the sheet is editable ***
-        if (!this.options.editable) {
+        if (!this.isEditable) {
             return;
         }
 
@@ -208,41 +220,63 @@ export class TwentyQuestionsDialog extends FormApplication {
         html.find("#generate").on("click", async (event) => {
             event.preventDefault();
             event.stopPropagation();
-            await this.object.toActor(this.actor, flattenObject(this.cache));
+            $(event.currentTarget).prop("disabled", true);
+            await this.object.toActor(this.actor, foundry.utils.flattenObject(this.cache));
             await this.close({ submit: true, force: true });
         });
+
+        // Autocomplete
+        if (this.object.data.template !== "pow") {
+            game.l5r5e.HelpersL5r5e.autocomplete(html, "step1.clan", game.l5r5e.HelpersL5r5e.getLocalizedClansList());
+            game.l5r5e.HelpersL5r5e.autocomplete(
+                html,
+                "step2.family",
+                CONFIG.l5r5e.families.get(
+                    Object.entries(game.l5r5e.HelpersL5r5e.getLocalizedRawObject("l5r5e.clans")).find(
+                        ([k, v]) => v === this.object.data.step1.clan
+                    )?.[0]
+                )
+            );
+        }
+        game.l5r5e.HelpersL5r5e.autocomplete(html, "step3.school", game.l5r5e.HelpersL5r5e.getSchoolsList(), ",");
+        game.l5r5e.HelpersL5r5e.autocomplete(html, "step3.roles", game.l5r5e.HelpersL5r5e.getLocalizedRolesList(), ",");
     }
 
     /**
      * Handle dropped items
      */
     async _onDropItem(type, event) {
-        if (!["item", "technique", "peculiarity"].includes(type)) {
+        // *** Everything below here is only needed if the sheet is editable ***
+        if (!this.isEditable) {
             return;
         }
-        const stepKey = $(event.target).data("step");
+
+        if (!["item", "technique", "peculiarity", "bond"].includes(type)) {
+            return;
+        }
+        const stepKey = $(event.currentTarget).data("step");
         if (!stepKey) {
-            console.warn("event stepKey is undefined");
+            console.warn("L5R5E | 20Q | Event stepKey is undefined");
             return;
         }
         try {
             // Get item
             const item = await game.l5r5e.HelpersL5r5e.getDragnDropTargetObject(event);
-            if (item.entity !== "Item" || !item) {
-                console.warn("forbidden item for this drop zone", type, item.data.type);
+            if (item.documentName !== "Item" || !item) {
+                console.warn(`L5R5E | 20Q | Forbidden item for this drop zone ${type} : ${item.type}`);
                 return;
             }
 
             // Specific step18_heritage, all item/tech allowed
             if (stepKey === "step18.heritage_item") {
-                type = item.data.type;
+                type = item.type;
             }
 
             if (
-                (type !== "item" && item.data.type !== type) ||
-                (type === "item" && !["item", "weapon", "armor"].includes(item.data.type))
+                (type !== "item" && item.type !== type) ||
+                (type === "item" && !["item", "weapon", "armor"].includes(item.type))
             ) {
-                console.warn("forbidden item for this drop zone", type, item.data.type);
+                console.warn(`L5R5E | 20Q | Forbidden item for this drop zone ${type} : ${item.type}`);
                 return;
             }
 
@@ -253,52 +287,51 @@ export class TwentyQuestionsDialog extends FormApplication {
                 case "technique":
                     // School Ability
                     if (stepKey === "step3.school_ability") {
-                        if (item.data.data.technique_type !== "school_ability") {
-                            console.warn("This technique is not a school ability", item.data.data.technique_type);
+                        if (item.system.technique_type !== "school_ability") {
+                            console.warn(`L5R5E | 20Q | This technique is not a school ability : ${item.system.technique_type}`);
                             return;
                         }
-                    } else if (!this.object.data.step3.allowed_techniques?.[item.data.data.technique_type]) {
-                        // Tech not allowed
-                        ui.notifications.info(game.i18n.localize("l5r5e.techniques.not_allowed"));
-                        return;
+                    } else if (!this.object.data.step3.allowed_techniques?.[item.system.technique_type]) {
+                        // Informative message : Tech not allowed
+                        ui.notifications.info("l5r5e.techniques.not_allowed", {localize: true});
                     }
                     break;
 
                 case "peculiarity":
                     switch (stepKey) {
                         case "step9.distinction":
-                            if (item.data.data.peculiarity_type !== "distinction") {
-                                console.warn("Wrong type", item.data.data.peculiarity_type);
+                            if (item.system.peculiarity_type !== "distinction") {
+                                console.warn(`L5R5E | 20Q | Wrong type given "${item.system.peculiarity_type}" instead of "distinction"`);
                                 return;
                             }
                             break;
                         case "step10.adversity":
-                            if (item.data.data.peculiarity_type !== "adversity") {
-                                console.warn("Wrong type", item.data.data.peculiarity_type);
+                            if (item.system.peculiarity_type !== "adversity") {
+                                console.warn(`L5R5E | 20Q | Wrong type given "${item.system.peculiarity_type}" instead of "adversity"`);
                                 return;
                             }
                             break;
                         case "step11.passion":
-                            if (item.data.data.peculiarity_type !== "passion") {
-                                console.warn("Wrong type", item.data.data.peculiarity_type);
+                            if (item.system.peculiarity_type !== "passion") {
+                                console.warn(`L5R5E | 20Q | Wrong type given "${item.system.peculiarity_type}" instead of "passion"`);
                                 return;
                             }
                             break;
                         case "step12.anxiety":
-                            if (item.data.data.peculiarity_type !== "anxiety") {
-                                console.warn("Wrong type", item.data.data.peculiarity_type);
+                            if (item.system.peculiarity_type !== "anxiety") {
+                                console.warn(`L5R5E | 20Q | Wrong type given "${item.system.peculiarity_type}" instead of "anxiety"`);
                                 return;
                             }
                             break;
                         case "step13.advantage":
-                            if (!["distinction", "passion"].includes(item.data.data.peculiarity_type)) {
-                                console.warn("Wrong type", item.data.data.peculiarity_type);
+                            if (!["distinction", "passion"].includes(item.system.peculiarity_type)) {
+                                console.warn(`L5R5E | 20Q | Wrong type given "${item.system.peculiarity_type}" instead of "distinction" or "passion"`);
                                 return;
                             }
                             break;
                         case "step13.disadvantage":
-                            if (!["adversity", "anxiety"].includes(item.data.data.peculiarity_type)) {
-                                console.warn("Wrong type", item.data.data.peculiarity_type);
+                            if (!["adversity", "anxiety"].includes(item.system.peculiarity_type)) {
+                                console.warn(`L5R5E | 20Q | Wrong type given "${item.system.peculiarity_type}" instead of "adversity" or "anxiety"`);
                                 return;
                             }
                             break;
@@ -311,7 +344,7 @@ export class TwentyQuestionsDialog extends FormApplication {
 
             this.submit();
         } catch (err) {
-            console.warn(err);
+            console.warn("L5R5E | 20Q | ", err);
         }
         return false;
     }
@@ -324,13 +357,31 @@ export class TwentyQuestionsDialog extends FormApplication {
      * @override
      */
     async _updateObject(event, formData) {
+        // Clan tag trim if autocomplete in school name
+        if (
+            formData["autoCompleteListName"] === "step3.school" &&
+            formData["autoCompleteListSelectedIndex"] >= 0 &&
+            !!formData["step1.clan"] &&
+            formData["step3.school"].indexOf(` [${formData["step1.clan"]}]`) !== -1
+        ) {
+            formData["step3.school"] = formData["step3.school"].replace(` [${formData["step1.clan"]}]`, "");
+        }
+
         // Check "Or" conditions
         formData["step7.social_add_glory"] = formData["step7.skill"] === "none" ? 5 : 0;
-        formData["step8.social_add_honor"] = formData["step8.skill"] === "none" ? 10 : 0;
+
+        if (formData["template"] === "pow" && this.object.data.step8.item.length > 0) {
+            formData["step8.skill"] = "none";
+            formData["step8.social_add_honor"] = 0;
+        } else {
+            formData["step8.social_add_honor"] =
+                !formData["step8.skill"] || formData["step8.skill"] === "none" ? 10 : 0;
+            foundry.utils.setProperty(this.object.data, "step8.item", []);
+        }
 
         if (this.object.data.step13.advantage.length > 0) {
             formData["step13.skill"] = "none";
-            setProperty(this.object.data, "step13.disadvantage", []);
+            foundry.utils.setProperty(this.object.data, "step13.disadvantage", []);
         }
 
         // Update 20Q object data
@@ -340,9 +391,10 @@ export class TwentyQuestionsDialog extends FormApplication {
         this.summary = this.object.validateForm();
 
         // Store this form datas in actor
-        this.actor.data.data.twenty_questions = this.object.data;
+        this.actor.system.twenty_questions = this.object.data;
         await this.actor.update({
-            data: {
+            system: {
+                template: formData["template"],
                 twenty_questions: this.object.data,
             },
         });
@@ -360,14 +412,14 @@ export class TwentyQuestionsDialog extends FormApplication {
         this.cache = {};
         for (const stepName of TwentyQuestions.itemsList) {
             // Check if current step value is a array
-            let step = getProperty(this.object.data, stepName);
+            let step = foundry.utils.getProperty(this.object.data, stepName);
             if (!step || !Array.isArray(step)) {
                 step = [];
             }
 
             // Init cache if not exist
-            if (!hasProperty(this.cache, stepName)) {
-                setProperty(this.cache, stepName, []);
+            if (!foundry.utils.hasProperty(this.cache, stepName)) {
+                foundry.utils.setProperty(this.cache, stepName, []);
             }
 
             // Get linked Item, and store it in cache (delete null value and old items)
@@ -376,14 +428,15 @@ export class TwentyQuestionsDialog extends FormApplication {
                 if (!id) {
                     continue;
                 }
-                const item = await game.l5r5e.HelpersL5r5e.getObjectGameOrPack(id, "Item");
+                const item = await game.l5r5e.HelpersL5r5e.getObjectGameOrPack({ id: id, type: "Item" });
                 if (!item) {
+                    console.warn(`L5R5E | 20Q | Unknown item id[${id}]`);
                     continue;
                 }
                 newStep.push(id);
-                getProperty(this.cache, stepName).push(item);
+                foundry.utils.getProperty(this.cache, stepName).push(item);
             }
-            setProperty(this.object.data, stepName, newStep);
+            foundry.utils.setProperty(this.object.data, stepName, newStep);
         }
     }
 
@@ -396,7 +449,7 @@ export class TwentyQuestionsDialog extends FormApplication {
         roll.actor = this._actor;
 
         await roll.roll();
-        setProperty(this.object.data, stepName, roll.result);
+        foundry.utils.setProperty(this.object.data, stepName, roll.result);
         return roll.toMessage({ flavor: flavor });
     }
 
@@ -406,7 +459,7 @@ export class TwentyQuestionsDialog extends FormApplication {
      */
     _addOwnedItem(item, stepName) {
         // Add to Step (uniq id only)
-        let step = getProperty(this.object.data, stepName);
+        let step = foundry.utils.getProperty(this.object.data, stepName);
         if (!step) {
             step = [];
         }
@@ -416,7 +469,7 @@ export class TwentyQuestionsDialog extends FormApplication {
         step.push(item.id);
 
         // Add to cache
-        getProperty(this.cache, stepName).push(item);
+        foundry.utils.getProperty(this.cache, stepName).push(item);
     }
 
     /**
@@ -425,14 +478,14 @@ export class TwentyQuestionsDialog extends FormApplication {
      */
     _deleteOwnedItem(stepName, itemId) {
         // Delete from current step
-        let step = getProperty(this.object.data, stepName);
+        let step = foundry.utils.getProperty(this.object.data, stepName);
         step = step.filter((e) => !!e && e !== itemId);
-        setProperty(this.object.data, stepName, step);
+        foundry.utils.setProperty(this.object.data, stepName, step);
 
         // Delete from cache
-        let cache = getProperty(this.cache, stepName);
+        let cache = foundry.utils.getProperty(this.cache, stepName);
         cache = cache.filter((e) => !!e && e.id !== itemId);
-        setProperty(this.cache, stepName, cache);
+        foundry.utils.setProperty(this.cache, stepName, cache);
     }
 
     /**
@@ -440,7 +493,7 @@ export class TwentyQuestionsDialog extends FormApplication {
      * @private
      */
     _getSkillZero(skillsList, skillsPoints, stepName) {
-        const stepSkillId = getProperty(this.object.data, stepName);
+        const stepSkillId = foundry.utils.getProperty(this.object.data, stepName);
         const out = {};
         Object.entries(skillsList).forEach(([cat, val]) => {
             out[cat] = val.filter(

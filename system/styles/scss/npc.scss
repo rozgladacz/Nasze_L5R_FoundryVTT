@@ -96,6 +96,7 @@
         width: 100%;
         line-height: 2rem;
         font-size: 0.75rem;
+        margin: 0.5rem 0;
         text-align: center;
         li {
             flex: 1;
@@ -132,23 +133,65 @@
         }
     }
     article {
-        .weapons-content {
-            flex: 1;
-        }
         min-height: auto;
-        display: flex;
-        fieldset {
+        fieldset,
+        .checklist {
             flex: 0 0 calc(100% - 0.5rem);
         }
         .items-content {
             flex: 0 0 calc(100% - 0.5rem);
             margin: 1rem 0.25rem 0;
         }
+        .weapons-content {
+            flex: 1;
+        }
+        .initiative-wrapper {
+            margin-bottom: 0.5rem;
+        }
+        &:last-child {
+            padding-bottom: 1rem;
+        }
+        .techniques-wrapper {
+            padding-left: 0.5rem;
+            fieldset,
+            .checklist {
+                flex: 100%;
+                margin: 0;
+            }
+        }
     }
     .npc-note {
         .editor {
             min-height: 6rem;
             max-height: 12rem;
+        }
+    }
+    .narrative-note {
+        flex: 0 0 calc(50% - 0.25rem);
+    }
+}
+&.character-generator-dialog {
+    form .body {
+        clear: both;
+        display: flex;
+        flex-direction: column;
+        flex-wrap: wrap;
+        margin: 3px 0;
+        align-items: start;
+    }
+    input[type="number"] {
+        width: auto;
+    }
+    form .form-group {
+        border-bottom: solid #8080803d 1px;
+
+        &.smaller {
+            > label {
+                flex: 10;
+            }
+            .form-fields {
+                flex: 1;
+            }
         }
     }
 }
