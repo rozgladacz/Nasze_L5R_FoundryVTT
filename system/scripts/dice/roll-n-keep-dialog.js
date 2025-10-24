@@ -277,6 +277,10 @@ export class RollnKeepDialog extends FormApplication {
             return;
         }
 
+        const onDiceLeftClick = this._onDiceLeftClick.bind(this);
+        const onDiceRightClick = this._onDiceRightClick.bind(this);
+        html.find(".dice.draggable").on("click", onDiceLeftClick).on("contextmenu", onDiceRightClick);
+
         // Finalize Button
         html.find("#finalize").on("click", (event) => {
             event.preventDefault();
@@ -345,6 +349,96 @@ export class RollnKeepDialog extends FormApplication {
 
         this.render(false);
         return false;
+    }
+
+    /**
+     * Handle a left click on a dice (keep the die)
+     * @param {MouseEvent} event
+     * @private
+     */
+    _onDiceLeftClick(event) {
+        event.preventDefault();
+
+        if (!this.isEditable) {
+            return;
+        }
+
+        const target = event.currentTarget;
+        const step = Number(target?.dataset?.step);
+        const dieIndex = Number(target?.dataset?.die);
+
+        if (
+            Number.isNaN(step) ||
+            Number.isNaN(dieIndex) ||
+            step !== this.object.currentStep ||
+            !this.object.dicesList[step] ||
+            !this.object.dicesList[step][dieIndex]
+        ) {
+            return;
+        }
+
+        const die = this.object.dicesList[step][dieIndex];
+        delete die.newFace;
+        die.choice = RollnKeepDialog.CHOICES.keep;
+
+        if (this._checkKeepCount(step) && this._getKeepCount(step) >= this.roll.l5r5e.keepLimit) {
+            this._forceChoiceForDiceWithoutOne(RollnKeepDialog.CHOICES.discard);
+        }
+
+        this.render(false);
+    }
+
+    /**
+     * Handle a right click on a dice (cycle choices)
+     * @param {MouseEvent} event
+     * @private
+     */
+    _onDiceRightClick(event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (!this.isEditable) {
+            return;
+        }
+
+        const target = event.currentTarget;
+        const step = Number(target?.dataset?.step);
+        const dieIndex = Number(target?.dataset?.die);
+
+        if (
+            Number.isNaN(step) ||
+            Number.isNaN(dieIndex) ||
+            step !== this.object.currentStep ||
+            !this.object.dicesList[step] ||
+            !this.object.dicesList[step][dieIndex]
+        ) {
+            return;
+        }
+
+        const die = this.object.dicesList[step][dieIndex];
+
+        if ([RollnKeepDialog.CHOICES.reroll, RollnKeepDialog.CHOICES.swap].includes(die.choice)) {
+            return;
+        }
+
+        const cycle = [
+            RollnKeepDialog.CHOICES.keep,
+            RollnKeepDialog.CHOICES.nothing,
+            RollnKeepDialog.CHOICES.discard,
+        ];
+        const currentIndex = cycle.findIndex((choice) => choice === die.choice);
+        const nextChoice = cycle[(currentIndex + 1) % cycle.length] ?? RollnKeepDialog.CHOICES.keep;
+
+        die.choice = nextChoice;
+
+        if (nextChoice === RollnKeepDialog.CHOICES.keep && this._checkKeepCount(step)) {
+            const keepLimit = this.roll.l5r5e.keepLimit;
+            if (this._getKeepCount(step) >= keepLimit) {
+                this._forceChoiceForDiceWithoutOne(RollnKeepDialog.CHOICES.discard);
+            }
+        }
+
+        this.render(false);
     }
 
     /**
