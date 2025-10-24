@@ -25,6 +25,34 @@ export class DicePickerDialog extends FormApplication {
     _target = null;
 
     /**
+     * Explicit targets provided when opening the dialog (kept to detect multi-target usage)
+     * @type {TokenDocument[]}
+     * @private
+     */
+    _explicitTargets = [];
+
+    /**
+     * Track whether a difficulty has already been provided (by user or technique)
+     * @type {boolean}
+     * @private
+     */
+    _difficultyProvided = false;
+
+    /**
+     * Stored hook for token updates while the dialog is open
+     * @type {Function|null}
+     * @private
+     */
+    _targetUpdateHook = null;
+
+    /**
+     * Ensure we only warn once when multiple targets are detected
+     * @type {boolean}
+     * @private
+     */
+    _multipleTargetNoticeShown = false;
+
+    /**
      * If GM or Constructor set to hidden, lock the player choice, so he cannot look the TN
      * @type {{gm: boolean, option: boolean}}
      * @private
@@ -194,6 +222,8 @@ export class DicePickerDialog extends FormApplication {
         } else if (options.itemUuid) {
             this.item = fromUuidSync(options.itemUuid);
         }
+
+        this._applyDefaultAttackDifficulty();
     }
 
     /**
@@ -236,6 +266,7 @@ export class DicePickerDialog extends FormApplication {
             return;
         }
         this._item = item;
+        this._applyDefaultAttackDifficulty();
     }
 
     /**
@@ -246,11 +277,32 @@ export class DicePickerDialog extends FormApplication {
         if (!targetToken) {
             return;
         }
-        if (!(targetToken instanceof TokenDocument)) {
-            console.warn("L5R5E | DP | target rejected : Not a valid TokenDocument instance", targetToken);
+
+        const tokens = Array.isArray(targetToken) ? targetToken : [targetToken];
+        const explicitTargets = [];
+
+        for (const token of tokens) {
+            if (token instanceof TokenDocument) {
+                explicitTargets.push(token);
+                continue;
+            }
+
+            if (token?.document instanceof TokenDocument) {
+                explicitTargets.push(token.document);
+                continue;
+            }
+
+            console.warn("L5R5E | DP | target rejected : Not a valid TokenDocument instance", token);
+        }
+
+        if (explicitTargets.length === 0) {
             return;
         }
-        this._target = targetToken;
+
+        this._explicitTargets = explicitTargets;
+        this._target = explicitTargets[0];
+        this._registerTargetUpdateHook();
+        this._applyDefaultAttackDifficulty();
     }
 
     /**
@@ -432,6 +484,10 @@ export class DicePickerDialog extends FormApplication {
     activateListeners(html) {
         super.activateListeners(html);
 
+        html.find("form").on("submit", () => {
+            this._applyDefaultAttackDifficulty();
+        });
+
         // Skill Selection from list
         html.find("select[name=skill]").on("change", async (event) => {
             event.preventDefault();
@@ -523,6 +579,8 @@ export class DicePickerDialog extends FormApplication {
      * @override
      */
     async _updateObject(event, formData) {
+        this._applyDefaultAttackDifficulty();
+
         if (this.object.skill.value < 1 && this.object.ring.value < 1) {
             return false;
         }
@@ -633,11 +691,123 @@ export class DicePickerDialog extends FormApplication {
     }
 
     /**
+     * Register a hook to refresh default difficulty if the targeted token changes
+     * @private
+     */
+    _registerTargetUpdateHook() {
+        this._unregisterTargetUpdateHook();
+
+        if (!this._target) {
+            return;
+        }
+
+        const targetSceneId = this._target.parent?.id;
+        const targetId = this._target.id;
+
+        this._targetUpdateHook = (scene, token) => {
+            const tokenDoc = token instanceof TokenDocument ? token : token?.document;
+            if (!tokenDoc || tokenDoc.id !== targetId) {
+                return;
+            }
+
+            const sceneId = scene?.id ?? tokenDoc.parent?.id;
+            if (targetSceneId && sceneId && sceneId !== targetSceneId) {
+                return;
+            }
+
+            this._applyDefaultAttackDifficulty();
+        };
+
+        Hooks.on("updateToken", this._targetUpdateHook);
+    }
+
+    /**
+     * Remove the token update hook when the dialog is closed or target changes
+     * @private
+     */
+    _unregisterTargetUpdateHook() {
+        if (!this._targetUpdateHook) {
+            return;
+        }
+
+        Hooks.off("updateToken", this._targetUpdateHook);
+        this._targetUpdateHook = null;
+    }
+
+    /**
+     * Apply default attack difficulty based on the current target stance
+     * @private
+     */
+    _applyDefaultAttackDifficulty() {
+        if (this._difficultyProvided) {
+            return;
+        }
+
+        const isWeapon =
+            this._item?.type === "weapon" ||
+            this._item?.system?.type === "weapon" ||
+            this._item?.system?.categories?.includes?.("weapon");
+        if (!isWeapon) {
+            return;
+        }
+
+        const explicitTargets = Array.isArray(this._explicitTargets)
+            ? this._explicitTargets.filter((t) => t instanceof TokenDocument)
+            : [];
+        const selectionTargets = Array.from(game.user?.targets ?? [])
+            .map((t) => (t?.document instanceof TokenDocument ? t.document : t))
+            .filter((doc) => doc instanceof TokenDocument);
+
+        const activeTargets = selectionTargets.length > 0 ? selectionTargets : explicitTargets;
+
+        const hasMultipleTargets =
+            activeTargets.length > 1 ||
+            selectionTargets.length > 1 ||
+            explicitTargets.length > 1 ||
+            (activeTargets.length === 1 && selectionTargets.length === 1 && activeTargets[0]?.id !== selectionTargets[0]?.id);
+
+        if (hasMultipleTargets) {
+            if (!this._multipleTargetNoticeShown) {
+                const key = "l5r5e.dice.dicepicker.auto_tn_single_target";
+                const localized = game.i18n?.localize?.(key);
+                const message = localized && localized !== key ? localized : "Automatic TN only works for a single target.";
+                ui.notifications?.info?.(message);
+                this._multipleTargetNoticeShown = true;
+            }
+            return;
+        }
+
+        this._multipleTargetNoticeShown = false;
+
+        const target = activeTargets[0] ?? this._target ?? null;
+
+        let difficulty = 2;
+        const stance =
+            target?.actor?.system?.conflict?.stance?.value ??
+            target?.actor?.system?.stance?.current ??
+            null;
+
+        if (String(stance ?? "").toLowerCase() === "air") {
+            difficulty += 1;
+        }
+
+        if (this.object.difficulty.value !== difficulty) {
+            this.difficulty = difficulty;
+            if (this.rendered) {
+                this.render(false);
+            }
+        }
+    }
+
+    /**
      * Change quantity between 0-9 on the element, and return the new value
      * @private
      */
     _quantityChange(element, add) {
         this.object[element].value = Math.max(Math.min(parseInt(this.object[element].value) + add, 9), 0);
+        if (element === "difficulty") {
+            this._difficultyProvided = true;
+        }
     }
 
     /**
@@ -697,6 +867,15 @@ export class DicePickerDialog extends FormApplication {
         }
 
         return game.user.assignHotbarMacro(macro, "auto"); // 1st available
+    }
+
+    /**
+     * Ensure we clean up hooks when the dialog closes
+     * @override
+     */
+    async close(options) {
+        this._unregisterTargetUpdateHook();
+        return super.close(options);
     }
 
     /**
@@ -804,6 +983,7 @@ export class DicePickerDialog extends FormApplication {
 
             // Before difficultyHiddenIsLock
             this.difficulty = difficulty;
+            this._difficultyProvided = true;
 
             // Hide npc stats on target
             if (infos[1] === "T") {
@@ -820,6 +1000,7 @@ export class DicePickerDialog extends FormApplication {
             return false;
         }
         this.difficulty = difficulty;
+        this._difficultyProvided = true;
         return true;
     }
 
