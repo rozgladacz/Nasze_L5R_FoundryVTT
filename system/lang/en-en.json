@@ -230,6 +230,7 @@
                 "initiative_roll": "Initiative roll",
                 "success_text": "Success!",
                 "bonus_text": "bonus successes",
+                "fire_bonus_text": "Fire bonus successes",
                 "fail_text": "Fail!",
                 "unknown_target": "Unknown target"
             },

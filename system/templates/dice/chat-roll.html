@@ -115,11 +115,16 @@
             {{/if}}
             <div class="l5r5e dice-result-rnk {{#ifCond totalSuccess '>=' ../l5r5e.difficulty}}success{{else}}fail{{/ifCond}} {{#if ../l5r5e.difficultyHidden}}gm-only{{/if}}">
                 {{#ifCond totalSuccess '>=' ../l5r5e.difficulty}}
-                    {{localize "l5r5e.dice.chat.success_text"}} <i title="{{totalBonus}} {{localize 'l5r5e.dice.chat.successes'}}">({{totalBonus}} {{localize "l5r5e.dice.chat.bonus_text"}})</i>
+                    {{localize "l5r5e.dice.chat.success_text"}} <i title="{{totalBonus}} {{localize 'l5r5e.dice.chat.successes'}}">({{totalBonus}} {{localize "l5r5e.dice.chat.bonus_text"}}{{#if fireBonus}}, +{{fireBonus}} {{localize "l5r5e.dice.chat.fire_bonus_text"}}{{/if}})</i>
                 {{else}}
                     {{localize "l5r5e.dice.chat.fail_text"}}
                 {{/ifCond}}
             </div>
+            {{#if fireBonus}}
+            <div class="l5r5e dice-result-rnk fire-bonus-detail">
+                +{{fireBonus}} {{localize "l5r5e.dice.chat.fire_bonus_text"}}
+            </div>
+            {{/if}}
             {{/l5r5e.summary}}
         </div>
         {{/if}}

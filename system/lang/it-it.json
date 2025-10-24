@@ -230,6 +230,7 @@
                 "initiative_roll": "Tiro Iniziativa",
                 "success_text": "Successo!",
                 "bonus_text": "successi bonus",
+                "fire_bonus_text": "successi bonus del Fuoco",
                 "fail_text": "Fallimento!",
                 "unknown_target": "Unknown target"
             },
