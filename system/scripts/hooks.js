@@ -1,18 +1,22 @@
 import { L5r5eHtmlMultiSelectElement } from "./misc/l5r5e-multiselect.js";
 
 export default class HooksL5r5e {
+    static #foundryStatusEffects = [];
     /**
      * Do initialization
      */
     static async init() {
-        // L5R conditions
-        if (game.settings.get(CONFIG.l5r5e.namespace, "show-all-status-effects")) {
-            // Add L5R conditions to foundry conditions (don't restrict users)
-            CONFIG.statusEffects.push(...CONFIG.l5r5e.conditions);
-        } else {
-            // L5R conditions only
-            CONFIG.statusEffects = CONFIG.l5r5e.conditions;
+        // Ensure we keep a copy of the default Foundry status effects before overriding them
+        if (!HooksL5r5e.#foundryStatusEffects.length) {
+            HooksL5r5e.#foundryStatusEffects = Array.from(CONFIG.statusEffects ?? []);
         }
+
+        const curatedConditions = Array.from(CONFIG.l5r5e.conditions ?? []);
+        const showAll = game.settings.get(CONFIG.l5r5e.namespace, "show-all-status-effects");
+
+        CONFIG.statusEffects = showAll
+            ? [...HooksL5r5e.#foundryStatusEffects, ...curatedConditions]
+            : curatedConditions;
     }
 
     /**
