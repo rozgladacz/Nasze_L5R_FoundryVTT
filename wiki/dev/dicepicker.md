@@ -37,3 +37,10 @@ For `actor*` properties, the resolution is in this order :
 4. Try to find the first controlled token by the player (`canvas.tokens.controlled[0]?.actor`)
 5. Use the assigned character if any (`game.user.character`)
 6. If nothing found, then no actor are set
+
+## Manual test scenarios
+
+* No target selected: default the TN to 2 for weapon attacks.
+* Single target in Air Stance (either `system.conflict.stance.value` or `system.stance.current`): TN becomes 3.
+* Techniques or rolls that provide their own TN keep the supplied value (no auto-adjustment).
+* Changing the target's stance after opening the dialog updates the TN before the roll resolves.

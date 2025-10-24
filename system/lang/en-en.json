@@ -242,7 +242,8 @@
                 "skill_assistance_label": "Assistance",
                 "roll_label": "Roll",
                 "bt_add_macro": "Add a macro",
-                "gm_request_dp_to_players": "Roll request sent to players"
+                "gm_request_dp_to_players": "Roll request sent to players",
+                "auto_tn_single_target": "Automatic TN is only available with a single target."
             },
             "roll_n_keep": {
                 "title": "Roll & Keep",
