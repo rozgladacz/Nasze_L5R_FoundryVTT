@@ -237,6 +237,10 @@ export class RollnKeepDialog extends FormApplication {
             this.options.classes.push("finalized");
         }
 
+        if (typeof this.roll?._ensureDefaultStrifeApplied === "function") {
+            this.roll._ensureDefaultStrifeApplied();
+        }
+
         return {
             ...(await super.getData(options)),
             isGM: game.user.isGM,
@@ -712,8 +716,10 @@ export class RollnKeepDialog extends FormApplication {
                         },
                     },
                 });
-                // Update the roll & send to chat
-                this.roll.l5r5e.strifeApplied = strifeApplied;
+            }
+            this.roll.l5r5e.strifeApplied = strifeApplied;
+            this.roll.l5r5e.strifeAppliedSet = true;
+            if (actorMod !== 0 && this.roll.l5r5e.actor?.isCharacterType) {
                 await this._toChatMessage();
             }
             return this.close();

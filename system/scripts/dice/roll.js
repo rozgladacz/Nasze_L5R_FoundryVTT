@@ -27,6 +27,7 @@ export class RollL5r5e extends Roll {
         skillId: "",
         stance: "",
         strifeApplied: 0,
+        strifeAppliedSet: false,
         summary: {
             totalSuccess: 0,
             totalBonus: 0,
@@ -137,6 +138,8 @@ export class RollL5r5e extends Roll {
         this.l5r5e.dicesTypes.l5r = this.dice.some((term) => term instanceof game.l5r5e.L5rBaseDie);
         summary.totalBonus = Math.max(0, summary.totalSuccess - this.l5r5e.difficulty);
 
+        this._ensureDefaultStrifeApplied();
+
         if (!this.l5r5e.keepLimit) {
             // count ring die + skill assistance
             this.l5r5e.keepLimit =
@@ -157,6 +160,21 @@ export class RollL5r5e extends Roll {
             this.l5r5e.rnkEnded = !this.l5r5e.history[this.l5r5e.history.length - 1].some(
                 (e) => !!e && e.choice === null
             );
+        }
+    }
+
+    /**
+     * Ensure strifeApplied has the expected default value when the player has not made a choice yet
+     * @private
+     */
+    _ensureDefaultStrifeApplied() {
+        const summaryStrife = Math.max(0, Number(this.l5r5e.summary?.strife) || 0);
+
+        if (!this.l5r5e.strifeAppliedSet) {
+            const defaultStrife = this.l5r5e.stance === "void" ? 0 : summaryStrife;
+            this.l5r5e.strifeApplied = Math.min(summaryStrife, Math.max(0, defaultStrife));
+        } else {
+            this.l5r5e.strifeApplied = Math.min(summaryStrife, Math.max(0, Number(this.l5r5e.strifeApplied) || 0));
         }
     }
 
