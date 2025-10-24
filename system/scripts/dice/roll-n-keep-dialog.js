@@ -39,6 +39,14 @@ export class RollnKeepDialog extends FormApplication {
             skills: [],
         },
         dicesList: [[]],
+        targetFatigue: 0,
+        targetFatigueApplied: 0,
+        targetFatigueExpected: false,
+        targetFatigueMultipleTargets: false,
+        targetFatigueSet: false,
+        targetFatigueSuggested: 0,
+        targetFatigueDefense: null,
+        targetFatigueTarget: null,
     };
 
     /**
@@ -188,6 +196,190 @@ export class RollnKeepDialog extends FormApplication {
     }
 
     /**
+     * Compute default fatigue value for the current target when applicable
+     * @return {{show: boolean, value: number, damage: number, bonus: number, defense: (number|null), targetActor: (Actor|null), hasMultipleTargets: boolean}}
+     * @private
+     */
+    _prepareTargetFatigueContext() {
+        const result = {
+            show: false,
+            value: Math.max(0, Number(this.object.targetFatigue) || 0),
+            damage: 0,
+            bonus: 0,
+            defense: null,
+            targetActor: null,
+            hasMultipleTargets: false,
+        };
+
+        const rollData = this.roll?.l5r5e;
+        if (!rollData?.rnkEnded) {
+            this.object.targetFatigueExpected = false;
+            this.object.targetFatigueDefense = null;
+            this.object.targetFatigueMultipleTargets = false;
+            this.object.targetFatigueTarget = null;
+            return result;
+        }
+
+        const item = rollData.item;
+        if (!this._isWeaponItem(item)) {
+            this.object.targetFatigueExpected = false;
+            this.object.targetFatigueDefense = null;
+            this.object.targetFatigueMultipleTargets = false;
+            this.object.targetFatigueTarget = null;
+            return result;
+        }
+
+        const targetToken = rollData.target;
+        const targetActor = targetToken?.actor instanceof Actor ? targetToken.actor : null;
+        if (!targetActor?.isCharacterType) {
+            this.object.targetFatigueExpected = false;
+            this.object.targetFatigueDefense = null;
+            this.object.targetFatigueMultipleTargets = false;
+            this.object.targetFatigueTarget = null;
+            return result;
+        }
+
+        const hasMultipleTargets = this._hasMultipleTargetsSelected(targetToken);
+        const defense = this._getTargetPhysicalDefense(targetActor);
+        if (defense === null) {
+            this.object.targetFatigueExpected = false;
+            this.object.targetFatigueDefense = null;
+            this.object.targetFatigueMultipleTargets = hasMultipleTargets;
+            this.object.targetFatigueTarget = targetActor.uuid || targetActor.id || null;
+            if (hasMultipleTargets) {
+                this.object.targetFatigueSet = false;
+            }
+            return { ...result, targetActor, hasMultipleTargets };
+        }
+
+        const targetIdentifier = targetActor.uuid || targetActor.id || null;
+        if (targetIdentifier && this.object.targetFatigueTarget !== targetIdentifier) {
+            this.object.targetFatigueTarget = targetIdentifier;
+            this.object.targetFatigueSet = false;
+            this.object.targetFatigueApplied = 0;
+        }
+
+        const baseDamage = this._ensureNumber(item?.system?.damage, 0);
+        const bonus = this._ensureNumber(rollData.summary?.totalBonus, 0);
+        const suggested = Math.max(0, baseDamage + bonus - defense);
+
+        this.object.targetFatigueSuggested = suggested;
+        this.object.targetFatigueDefense = defense;
+        this.object.targetFatigueMultipleTargets = hasMultipleTargets;
+        this.object.targetFatigueExpected = !hasMultipleTargets;
+        if (hasMultipleTargets) {
+            this.object.targetFatigueSet = false;
+        }
+        if (!this.object.targetFatigueSet) {
+            this.object.targetFatigue = suggested;
+        }
+
+        result.show = !hasMultipleTargets;
+        result.value = Math.max(0, Number(this.object.targetFatigue) || 0);
+        result.damage = baseDamage;
+        result.bonus = bonus;
+        result.defense = defense;
+        result.targetActor = targetActor;
+        result.hasMultipleTargets = hasMultipleTargets;
+        return result;
+    }
+
+    /**
+     * Return true if more than one target is currently selected for the user or recorded on the message
+     * @param {TokenDocument|null} targetToken
+     * @return {boolean}
+     * @private
+     */
+    _hasMultipleTargetsSelected(targetToken) {
+        const TokenDocClass = typeof TokenDocument !== "undefined" ? TokenDocument : null;
+        const selectionTargets = Array.from(game.user?.targets ?? [])
+            .map((t) => t?.document)
+            .filter((doc) => (TokenDocClass ? doc instanceof TokenDocClass : !!doc));
+        if (selectionTargets.length > 1) {
+            return true;
+        }
+
+        if (selectionTargets.length === 1 && targetToken && selectionTargets[0]?.id && selectionTargets[0]?.id !== targetToken.id) {
+            return true;
+        }
+
+        const flags = this.message?.flags ?? {};
+        const flaggedTargets = [];
+        if (Array.isArray(flags?.l5r5eDicePicker?.explicitTargets)) {
+            flaggedTargets.push(...flags.l5r5eDicePicker.explicitTargets);
+        }
+        if (Array.isArray(flags?.l5r5eDice?.explicitTargets)) {
+            flaggedTargets.push(...flags.l5r5eDice.explicitTargets);
+        }
+        return flaggedTargets.length > 1;
+    }
+
+    /**
+     * Ensure a numeric value with a given fallback
+     * @param {*} value
+     * @param {number} fallback
+     * @return {number}
+     * @private
+     */
+    _ensureNumber(value, fallback = 0) {
+        const parsed = Number(value ?? fallback);
+        return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
+    /**
+     * Return true if the provided item should be treated as a weapon
+     * @param {ItemL5r5e|null} item
+     * @return {boolean}
+     * @private
+     */
+    _isWeaponItem(item) {
+        if (!item) {
+            return false;
+        }
+        if (item.type === "weapon" || item?.system?.type === "weapon") {
+            return true;
+        }
+        const categories = item?.system?.categories;
+        if (Array.isArray(categories)) {
+            return categories.includes("weapon");
+        }
+        if (typeof categories === "string") {
+            return categories.split(/[,;\s]+/).includes("weapon");
+        }
+        return false;
+    }
+
+    /**
+     * Compute the highest equipped physical armor value for the provided actor
+     * @param {Actor|null} actor
+     * @return {number|null}
+     * @private
+     */
+    _getTargetPhysicalDefense(actor) {
+        if (!actor?.items) {
+            return null;
+        }
+
+        let maxDefense = null;
+        const armorItems = actor.items.filter((item) => item.type === "armor" && item.system?.equipped);
+        if (Array.isArray(armorItems) && armorItems.length === 0) {
+            return 0;
+        }
+
+        armorItems.forEach((armor) => {
+            const physical = this._ensureNumber(armor.system?.armor?.physical, 0);
+            if (maxDefense === null || physical > maxDefense) {
+                maxDefense = physical;
+            }
+        });
+
+        if (maxDefense === null) {
+            return 0;
+        }
+        return Math.max(0, maxDefense);
+    }
+
+    /**
      * Create drag-and-drop workflow handlers for this Application
      * @return An array of DragDrop handlers
      */
@@ -224,6 +416,8 @@ export class RollnKeepDialog extends FormApplication {
      */
     async getData(options = null) {
         const rollData = this.roll.l5r5e;
+        const fatigueContext = this._prepareTargetFatigueContext();
+        const expectTargetFatigue = fatigueContext.show;
 
         // Disable submit / edition
         this.options.classes = this.options.classes.filter((e) => e !== "finalized");
@@ -233,22 +427,35 @@ export class RollnKeepDialog extends FormApplication {
             const kept = this._getKeepCount(this.object.currentStep);
             this.object.submitDisabled = kept < 1 || kept > rollData.keepLimit;
         } else if (!this.object.dicesList[this.object.currentStep]) {
-            this.options.editable = this.isOwner && rollData.summary.strife > 0;
+            this.options.editable = this.isOwner && (rollData.summary.strife > 0 || expectTargetFatigue);
             this.options.classes.push("finalized");
+        }
+
+        if (options) {
+            options.editable = this.options.editable;
         }
 
         if (typeof this.roll?._ensureDefaultStrifeApplied === "function") {
             this.roll._ensureDefaultStrifeApplied();
         }
 
+        const showTargetFatigue = this.options.editable && expectTargetFatigue;
+
         return {
             ...(await super.getData(options)),
             isGM: game.user.isGM,
             showChoices: options.editable && !rollData.rnkEnded,
             showStrifeBt: options.editable && rollData.summary.strife > 0 && rollData.actor?.isCharacterType,
+            showTargetFatigue,
             cssClass: this.options.classes.join(" "),
             data: this.object,
             l5r5e: rollData,
+            targetFatigue: {
+                value: Math.max(0, Number(this.object.targetFatigue) || 0),
+                damage: fatigueContext.damage,
+                bonus: fatigueContext.bonus,
+                defense: fatigueContext.defense,
+            },
         };
     }
 
@@ -691,6 +898,45 @@ export class RollnKeepDialog extends FormApplication {
     }
 
     /**
+     * Apply fatigue change to the targeted actor when possible
+     * @param {*} value
+     * @return {Promise<boolean>} True if chat message should be refreshed
+     * @private
+     */
+    async _applyTargetFatigueUpdate(value) {
+        const context = this._prepareTargetFatigueContext();
+        if (!this.object.targetFatigueExpected || !context.targetActor) {
+            return false;
+        }
+        if (context.hasMultipleTargets || !context.targetActor.isOwner) {
+            return false;
+        }
+
+        const sanitized = Math.max(0, this._ensureNumber(value, this.object.targetFatigue));
+        this.object.targetFatigueSet = true;
+        this.object.targetFatigue = sanitized;
+
+        const previous = Math.max(0, this._ensureNumber(this.object.targetFatigueApplied, 0));
+        if (sanitized === previous) {
+            return false;
+        }
+
+        const currentFatigue = Math.max(0, this._ensureNumber(context.targetActor.system?.fatigue?.value, 0));
+        const newFatigue = Math.max(0, currentFatigue + sanitized - previous);
+
+        await context.targetActor.update({
+            system: {
+                fatigue: {
+                    value: newFatigue,
+                },
+            },
+        });
+
+        this.object.targetFatigueApplied = sanitized;
+        return true;
+    }
+
+    /**
      * This method is called upon form submission after form data is validated
      * @param event    The initial triggering submission event
      * @param formData The object of validated form data with which to update the object
@@ -704,22 +950,41 @@ export class RollnKeepDialog extends FormApplication {
         }
 
         // Last step strife choice
-        if (this.roll?.l5r5e?.rnkEnded && formData.strifeApplied !== undefined) {
+        if (
+            this.roll?.l5r5e?.rnkEnded &&
+            (formData.strifeApplied !== undefined || formData.targetFatigue !== undefined)
+        ) {
+            let refreshChat = false;
+
             // Apply strife to actor
-            const strifeApplied = Math.min(this.roll.l5r5e.summary.strife, Math.max(0, formData.strifeApplied));
-            const actorMod = strifeApplied - this.roll.l5r5e.strifeApplied;
-            if (actorMod !== 0 && this.roll.l5r5e.actor?.isCharacterType) {
-                await this.roll.l5r5e.actor.update({
-                    system: {
-                        strife: {
-                            value: Math.max(0, this.roll.l5r5e.actor.system.strife.value + actorMod),
+            if (formData.strifeApplied !== undefined) {
+                const strifeApplied = Math.min(
+                    this.roll.l5r5e.summary.strife,
+                    Math.max(0, formData.strifeApplied)
+                );
+                const actorMod = strifeApplied - this.roll.l5r5e.strifeApplied;
+                if (actorMod !== 0 && this.roll.l5r5e.actor?.isCharacterType) {
+                    await this.roll.l5r5e.actor.update({
+                        system: {
+                            strife: {
+                                value: Math.max(0, this.roll.l5r5e.actor.system.strife.value + actorMod),
+                            },
                         },
-                    },
-                });
+                    });
+                }
+                this.roll.l5r5e.strifeApplied = strifeApplied;
+                this.roll.l5r5e.strifeAppliedSet = true;
+                if (actorMod !== 0 && this.roll.l5r5e.actor?.isCharacterType) {
+                    refreshChat = true;
+                }
             }
-            this.roll.l5r5e.strifeApplied = strifeApplied;
-            this.roll.l5r5e.strifeAppliedSet = true;
-            if (actorMod !== 0 && this.roll.l5r5e.actor?.isCharacterType) {
+
+            if (formData.targetFatigue !== undefined) {
+                const fatigueChanged = await this._applyTargetFatigueUpdate(formData.targetFatigue);
+                refreshChat = refreshChat || fatigueChanged;
+            }
+
+            if (refreshChat) {
                 await this._toChatMessage();
             }
             return this.close();
@@ -737,11 +1002,17 @@ export class RollnKeepDialog extends FormApplication {
         // Rebuild the roll
         await this._rebuildRoll(false);
 
+        const expectTargetFatigue = this._prepareTargetFatigueContext().show;
+
         // Send the new roll in chat and delete the old message
         await this._toChatMessage();
 
         // If a next step exist or strife, rerender, else close
-        if (this.object.dicesList[this.object.currentStep] || this.roll.l5r5e.summary.strife > 0) {
+        if (
+            this.object.dicesList[this.object.currentStep] ||
+            this.roll.l5r5e.summary.strife > 0 ||
+            expectTargetFatigue
+        ) {
             return this.render(false);
         }
         return this.close();

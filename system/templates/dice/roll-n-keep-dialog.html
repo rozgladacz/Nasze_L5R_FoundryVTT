@@ -147,9 +147,33 @@
                 </div>
                 <div class="form-fields"></div>
             </div>
+            {{/if}}
+            {{#if showTargetFatigue}}
+            <div class="form-group" style="width: 100%;">
+                <label for="targetFatigue">
+                    <i class="fas fa-heartbeat"></i> {{localize 'l5r5e.attributes.fatigue'}}
+                </label>
+                <div class="form-fields">
+                    <input type="number" name="targetFatigue" id="targetFatigue" value="{{targetFatigue.value}}" data-dtype="Number" min="0" step="1">
+                    <span class="fatigue-summary">
+                        <i class="fas fa-tint" title="{{localize 'l5r5e.weapons.damage'}}"></i> {{targetFatigue.damage}}
+                        + <i class="i_success" title="{{localize 'l5r5e.dice.chat.successes'}}"></i> {{targetFatigue.bonus}}
+                        - <i class="fas fa-shield-alt" title="{{localize 'l5r5e.armors.physical'}}"></i> {{targetFatigue.defense}}
+                        = {{targetFatigue.value}}
+                    </span>
+                </div>
+            </div>
+            {{/if}}
+            {{#if showStrifeBt}}
             <button id="finalize" name="finalize" type="button" {{#if data.submitDisabled}}disabled{{/if}}>
                 {{ localize 'l5r5e.dice.roll_n_keep.bt_strife' }} <i class="fas fa-arrow-circle-right"></i>
             </button>
+            {{else}}
+                {{#if showTargetFatigue}}
+                <button id="finalize" name="finalize" type="button" {{#if data.submitDisabled}}disabled{{/if}}>
+                    {{ localize 'l5r5e.dice.roll_n_keep.bt_validate' }} <i class="fas fa-arrow-circle-right"></i>
+                </button>
+                {{/if}}
             {{/if}}
         {{/if}}
     </section>
