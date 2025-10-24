@@ -221,6 +221,9 @@
                 "successes": "Éxitos",
                 "explosives": "Relanzables",
                 "opportunities": "Oportunidades",
+                "opportunities_spent": "Oportunidades gastadas",
+                "opportunity_damage": "Bonificación de daño por oportunidades: +{{value}}",
+                "opportunity_critical": "Bonificación crítica por oportunidades: +{{value}}",
                 "strife": "Conflictos",
                 "difficulty": "NO",
                 "difficulty_hidden": "???",
@@ -241,6 +244,7 @@
                 "use_void_point_label": "Gasta un",
                 "void_point_tooltip": "Punto de vacío",
                 "skill_assistance_label": "Asistencia",
+                "goal_label": "Objetivo declarado",
                 "roll_label": "Tirar",
                 "bt_add_macro": "Añadir una macro",
                 "gm_request_dp_to_players": "Solicitud de tirada enviada a los jugadores"
@@ -254,7 +258,15 @@
                 "max": "Máx",
                 "bt_validate": "Terminar este paso",
                 "bt_strife": "Aplicar Conflicto",
-                "undo": "[GM] Deshacer los últimos cambios"
+                "undo": "[GM] Deshacer los últimos cambios",
+                "opportunities": {
+                    "available": "Oportunidades disponibles",
+                    "remainingLabel": "Restantes: {{remaining}}",
+                    "optionsTitle": "Gastar oportunidades",
+                    "selectedTitle": "Oportunidades elegidas",
+                    "remove": "Eliminar selección",
+                    "none": "No hay oportunidades contextuales disponibles."
+                }
             }
         },
         "gm": {
@@ -702,6 +714,26 @@
             "ivory_kingdoms": "Reinos de Marfil",
             "qamarist": "Qamarista",
             "ujik": "Ujik"
+        },
+        "opportunities": {
+            "calmingBreath": {
+                "title": "Respiración calmante",
+                "description": "Concéntrate en tu respiración para afianzar tu determinación.",
+                "effect": "Reduce tu conflicto en 1.",
+                "note": "Calmas tus emociones y reduces tu conflicto en 1."
+            },
+            "pressTheAttack": {
+                "title": "Presionar el ataque",
+                "description": "Impulsa tu asalto para lograr un golpe decisivo.",
+                "effect": "Añade +2 a la próxima tirada de daño de este ataque.",
+                "note": "Tu asalto gana impulso y añade +{{amount}} de daño al golpe."
+            },
+            "seizeTheMoment": {
+                "title": "Aprovechar el momento",
+                "description": "Prepárate para explotar una abertura.",
+                "effect": "Aumenta en 1 la gravedad del próximo golpe crítico.",
+                "note": "Esperas la abertura adecuada y aumentas en 1 la gravedad del próximo golpe crítico."
+            }
         },
         "demeanor": {
             "adaptable": "Adaptable",

@@ -86,6 +86,7 @@ export class DicePickerDialog extends FormApplication {
         },
         useVoidPoint: false,
         isInitiativeRoll: false,
+        goal: "",
     };
 
     /**
@@ -488,6 +489,10 @@ export class DicePickerDialog extends FormApplication {
             this._applyDefaultAttackDifficulty();
         });
 
+        html.find('textarea[name="goal"]').on("input", (event) => {
+            this.object.goal = String(event?.currentTarget?.value ?? "");
+        });
+
         // Skill Selection from list
         html.find("select[name=skill]").on("change", async (event) => {
             event.preventDefault();
@@ -581,6 +586,8 @@ export class DicePickerDialog extends FormApplication {
     async _updateObject(event, formData) {
         this._applyDefaultAttackDifficulty();
 
+        this.object.goal = String(formData.goal ?? this.object.goal ?? "").trim();
+
         if (this.object.skill.value < 1 && this.object.ring.value < 1) {
             return false;
         }
@@ -648,6 +655,7 @@ export class DicePickerDialog extends FormApplication {
                 useVoidPoint: this.object.useVoidPoint,
                 skillAssistance: this.object.skill.assistance,
                 difficultyHidden: this.object.difficulty.hidden,
+                goal: this.object.goal,
             };
 
             await this._actor.rollInitiative({
@@ -675,6 +683,7 @@ export class DicePickerDialog extends FormApplication {
             roll.l5r5e.voidPointUsed = this.object.useVoidPoint;
             roll.l5r5e.skillAssistance = this.object.skill.assistance;
             roll.l5r5e.difficultyHidden = this.object.difficulty.hidden;
+            roll.l5r5e.goal = this.object.goal;
 
             await roll.roll();
             message = await roll.toMessage();

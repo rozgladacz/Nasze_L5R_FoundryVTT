@@ -21,6 +21,7 @@ export class RollL5r5e extends Roll {
         isInitiativeRoll: false,
         item: null,
         keepLimit: null,
+        goal: "",
         rnkEnded: false,
         skillAssistance: 0,
         skillCatId: "",
@@ -39,6 +40,13 @@ export class RollL5r5e extends Roll {
         },
         target: null,
         voidPointUsed: false,
+        opportunitiesAvailable: 0,
+        opportunitySelections: [],
+        opportunityBonuses: {
+            damage: 0,
+            critical: 0,
+        },
+        opportunityNotes: [],
     };
 
     constructor(formula, data = {}, options = {}) {

@@ -1,3 +1,11 @@
+import {
+    aggregateOpportunityEffects,
+    createOpportunityContext,
+    createOpportunitySelection,
+    getOpportunityOptionsForContext,
+    sanitizeOpportunitySelections,
+} from "./opportunity-options.js";
+
 /**
  * L5R Dice Roll n Keep dialog
  * @extends {FormApplication}
@@ -20,6 +28,13 @@ export class RollnKeepDialog extends FormApplication {
      * @param {ChatMessage} message
      */
     _message = null;
+
+    /**
+     * Cache of the currently displayed opportunity options
+     * @type {Array}
+     * @private
+     */
+    _currentOpportunityOptions = [];
 
     /**
      * The current Roll
@@ -47,6 +62,11 @@ export class RollnKeepDialog extends FormApplication {
         targetFatigueSuggested: 0,
         targetFatigueDefense: null,
         targetFatigueTarget: null,
+        opportunities: {
+            available: 0,
+            remaining: 0,
+            selections: [],
+        },
     };
 
     /**
@@ -164,6 +184,7 @@ export class RollnKeepDialog extends FormApplication {
                 currentStep += 1;
             }
             this.object.currentStep = currentStep;
+            this._initializeOpportunities();
             return;
         }
 
@@ -181,6 +202,8 @@ export class RollnKeepDialog extends FormApplication {
                 });
             });
         });
+
+        this._initializeOpportunities();
     }
 
     /**
@@ -193,6 +216,309 @@ export class RollnKeepDialog extends FormApplication {
 
         // Only unique for Skills
         this.object.swapDiceFaces.skills = [1, 3, 6, 8, 10, 11, 12];
+    }
+
+    /**
+     * Return the total opportunity cost already spent
+     * @return {number}
+     * @private
+     */
+    _getOpportunitySpent() {
+        if (!this.object.opportunities || !Array.isArray(this.object.opportunities.selections)) {
+            return 0;
+        }
+        return this.object.opportunities.selections.reduce(
+            (total, selection) => total + (Number(selection.cost) || 0),
+            0
+        );
+    }
+
+    /**
+     * Recalculate remaining opportunities based on current selections and available total
+     * @return {number}
+     * @private
+     */
+    _recalculateOpportunityRemaining() {
+        if (!this.object.opportunities) {
+            this.object.opportunities = { available: 0, remaining: 0, selections: [] };
+        }
+        const spent = this._getOpportunitySpent();
+        const rawAvailable = Number(this.object.opportunities.available ?? 0);
+        const available = Math.max(spent, Number.isFinite(rawAvailable) ? rawAvailable : 0);
+        this.object.opportunities.available = available;
+        this.object.opportunities.remaining = Math.max(0, available - spent);
+        return this.object.opportunities.remaining;
+    }
+
+    /**
+     * Apply the immediate preview effects of an opportunity selection to the form controls
+     * @param {{preview?: {strife?: number, fatigue?: number}}} selection
+     * @param {jQuery} html
+     * @return {{strife: number, fatigue: number}}
+     * @private
+     */
+    _applyOpportunityPreview(selection, html) {
+        const preview = selection?.preview ?? {};
+        const applied = { strife: 0, fatigue: 0 };
+
+        if (preview.strife) {
+            const slider = html.find('input[name="strifeApplied"]');
+            if (slider.length) {
+                const minAttr = Number(slider.attr("min"));
+                const maxAttr = Number(slider.attr("max"));
+                const current = Number(slider.val() ?? 0) || 0;
+                const target = current + preview.strife;
+                const min = Number.isFinite(minAttr) ? minAttr : 0;
+                const max = Number.isFinite(maxAttr) ? maxAttr : target;
+                const nextValue = Math.min(max, Math.max(min, target));
+                slider.val(nextValue);
+                html.find(".range-value").text(nextValue);
+                applied.strife = nextValue - current;
+                this.roll.l5r5e.strifeApplied = nextValue;
+                this.roll.l5r5e.strifeAppliedSet = true;
+            }
+        }
+
+        if (preview.fatigue) {
+            const fatigueInput = html.find('input[name="targetFatigue"]');
+            if (fatigueInput.length) {
+                const current = Number(fatigueInput.val() ?? 0) || 0;
+                const nextValue = Math.max(0, current + preview.fatigue);
+                fatigueInput.val(nextValue);
+                applied.fatigue = nextValue - current;
+                this.object.targetFatigue = nextValue;
+                this.object.targetFatigueSet = true;
+            }
+        }
+
+        return applied;
+    }
+
+    /**
+     * Revert previously applied opportunity preview adjustments
+     * @param {{preview?: Object, previewApplied?: Object}} selection
+     * @param {jQuery} html
+     * @private
+     */
+    _revertOpportunityPreview(selection, html) {
+        const applied = selection?.previewApplied ?? selection?.preview ?? {};
+
+        if (applied.strife) {
+            const slider = html.find('input[name="strifeApplied"]');
+            if (slider.length) {
+                const minAttr = Number(slider.attr("min"));
+                const maxAttr = Number(slider.attr("max"));
+                const current = Number(slider.val() ?? 0) || 0;
+                const target = current - applied.strife;
+                const min = Number.isFinite(minAttr) ? minAttr : 0;
+                const max = Number.isFinite(maxAttr) ? maxAttr : target;
+                const nextValue = Math.min(max, Math.max(min, target));
+                slider.val(nextValue);
+                html.find(".range-value").text(nextValue);
+                this.roll.l5r5e.strifeApplied = nextValue;
+            }
+        }
+
+        if (applied.fatigue) {
+            const fatigueInput = html.find('input[name="targetFatigue"]');
+            if (fatigueInput.length) {
+                const current = Number(fatigueInput.val() ?? 0) || 0;
+                const nextValue = Math.max(0, current - applied.fatigue);
+                fatigueInput.val(nextValue);
+                this.object.targetFatigue = nextValue;
+            }
+        }
+    }
+
+    /**
+     * Update the remaining opportunity label and option availability in the current DOM
+     * @param {jQuery} html
+     * @private
+     */
+    _refreshOpportunitySummary(html) {
+        if (!html) {
+            return;
+        }
+        const remainingLabel = game.i18n.format(
+            "l5r5e.dice.roll_n_keep.opportunities.remainingLabel",
+            { remaining: this.object.opportunities.remaining }
+        );
+        html.find(".opportunities-remaining").text(remainingLabel);
+
+        if (!Array.isArray(this._currentOpportunityOptions)) {
+            return;
+        }
+
+        this._currentOpportunityOptions = this._currentOpportunityOptions.map((option) => ({
+            ...option,
+            disabled: option.cost > this.object.opportunities.remaining,
+        }));
+
+        this._currentOpportunityOptions.forEach((option) => {
+            const button = html.find(`.opportunity-option[data-option-id="${option.id}"]`);
+            const disabled = option.cost > this.object.opportunities.remaining;
+            button.prop("disabled", disabled);
+            button.toggleClass("disabled", disabled);
+        });
+    }
+
+    /**
+     * Handle selecting an opportunity option
+     * @param {Event} event
+     * @param {jQuery} html
+     * @private
+     */
+    _onOpportunityOptionClick(event, html) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const optionId = event.currentTarget?.dataset?.optionId;
+        if (!optionId) {
+            return;
+        }
+
+        this._recalculateOpportunityRemaining();
+        const context = createOpportunityContext(this.roll);
+        const selection = createOpportunitySelection(optionId, context);
+        if (!selection) {
+            return;
+        }
+
+        if (selection.cost > this.object.opportunities.remaining) {
+            return;
+        }
+
+        const appliedPreview = this._applyOpportunityPreview(selection, html);
+        selection.previewApplied = appliedPreview;
+        this.object.opportunities.selections.push(selection);
+        this._recalculateOpportunityRemaining();
+        this.render(false);
+    }
+
+    /**
+     * Remove a previously chosen opportunity selection
+     * @param {Event} event
+     * @param {jQuery} html
+     * @private
+     */
+    _onOpportunitySelectionRemove(event, html) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const index = Number(event.currentTarget?.dataset?.selectionIndex);
+        if (!Number.isInteger(index) || index < 0) {
+            return;
+        }
+
+        const [selection] = this.object.opportunities.selections.splice(index, 1);
+        if (!selection) {
+            return;
+        }
+
+        this._revertOpportunityPreview(selection, html);
+        this._recalculateOpportunityRemaining();
+        this.render(false);
+    }
+
+    /**
+     * Handle manual update of available opportunities
+     * @param {Event} event
+     * @param {jQuery} html
+     * @private
+     */
+    _onOpportunityAvailableChange(event, html) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const rawValue = Number(event.currentTarget?.value ?? this.object.opportunities.available);
+        const sanitized = Number.isFinite(rawValue) ? Math.max(0, rawValue) : this.object.opportunities.available;
+        this.object.opportunities.available = sanitized;
+        this._recalculateOpportunityRemaining();
+        event.currentTarget.value = this.object.opportunities.available;
+        this._refreshOpportunitySummary(html);
+    }
+
+    /**
+     * Persist the selected opportunities into the roll data
+     * @return {boolean} True if the chat message should be refreshed
+     * @private
+     */
+    _applyOpportunitySelections() {
+        const cleanedSelections = (this.object.opportunities?.selections ?? []).map((selection) => {
+            const clone = { ...selection };
+            delete clone.previewApplied;
+            return clone;
+        });
+        const sanitizedSelections = sanitizeOpportunitySelections(cleanedSelections);
+        const aggregate = aggregateOpportunityEffects(sanitizedSelections);
+        const uniqueNotes = Array.from(new Set(aggregate.notes));
+
+        const previousState = JSON.stringify({
+            selections: this.roll.l5r5e.opportunitySelections ?? [],
+            bonuses: this.roll.l5r5e.opportunityBonuses ?? { damage: 0, critical: 0 },
+            available: this.roll.l5r5e.opportunitiesAvailable ?? 0,
+            notes: this.roll.l5r5e.opportunityNotes ?? [],
+        });
+
+        const nextState = JSON.stringify({
+            selections: sanitizedSelections,
+            bonuses: { damage: aggregate.damageBonus, critical: aggregate.criticalBonus },
+            available: this.object.opportunities.available,
+            notes: uniqueNotes,
+        });
+
+        if (previousState === nextState) {
+            return false;
+        }
+
+        this.roll.l5r5e.opportunitySelections = sanitizedSelections;
+        this.roll.l5r5e.opportunityBonuses = {
+            damage: aggregate.damageBonus,
+            critical: aggregate.criticalBonus,
+        };
+        this.roll.l5r5e.opportunitiesAvailable = this.object.opportunities.available;
+        this.roll.l5r5e.opportunityNotes = uniqueNotes;
+
+        return true;
+    }
+
+    /**
+     * Initialize the opportunity tracking state from the current roll
+     * @private
+     */
+    _initializeOpportunities() {
+        const rollData = this.roll?.l5r5e ?? {};
+        const storedSelections = Array.isArray(rollData.opportunitySelections)
+            ? sanitizeOpportunitySelections(rollData.opportunitySelections)
+            : [];
+        const spent = storedSelections.reduce((total, selection) => total + (Number(selection.cost) || 0), 0);
+        const availableFromRoll = Math.max(
+            0,
+            Number(rollData.opportunitiesAvailable ?? rollData.summary?.opportunity ?? 0)
+        );
+        const available = Math.max(availableFromRoll, spent);
+
+        this.object.opportunities = {
+            available,
+            remaining: Math.max(0, available - spent),
+            selections: storedSelections.map((selection) => ({
+                ...selection,
+                previewApplied: { strife: 0, fatigue: 0 },
+            })),
+        };
+
+        if (!Array.isArray(this.roll.l5r5e.opportunitySelections)) {
+            this.roll.l5r5e.opportunitySelections = storedSelections;
+        }
+        if (typeof this.roll.l5r5e.opportunitiesAvailable !== "number") {
+            this.roll.l5r5e.opportunitiesAvailable = available;
+        }
+        if (!this.roll.l5r5e.opportunityBonuses) {
+            this.roll.l5r5e.opportunityBonuses = { damage: 0, critical: 0 };
+        }
+        if (!Array.isArray(this.roll.l5r5e.opportunityNotes)) {
+            this.roll.l5r5e.opportunityNotes = [];
+        }
     }
 
     /**
@@ -441,12 +767,36 @@ export class RollnKeepDialog extends FormApplication {
 
         const showTargetFatigue = this.options.editable && expectTargetFatigue;
 
+        this._recalculateOpportunityRemaining();
+        const opportunityContext = createOpportunityContext(this.roll);
+        let opportunityOptions = [];
+        if (this.options.editable) {
+            opportunityOptions = getOpportunityOptionsForContext(opportunityContext).map((option) => ({
+                ...option,
+                disabled: option.cost > this.object.opportunities.remaining,
+            }));
+        }
+        this._currentOpportunityOptions = opportunityOptions;
+
+        const showOpportunities =
+            (this.object.opportunities?.available ?? 0) > 0 ||
+            (this.object.opportunities?.selections?.length ?? 0) > 0 ||
+            (rollData.summary?.opportunity ?? 0) > 0;
+
+        const opportunitiesData = foundry.utils.duplicate(this.object.opportunities ?? {});
+        opportunitiesData.remainingLabel = game.i18n.format(
+            "l5r5e.dice.roll_n_keep.opportunities.remainingLabel",
+            { remaining: opportunitiesData.remaining ?? 0 }
+        );
+
         return {
             ...(await super.getData(options)),
             isGM: game.user.isGM,
             showChoices: options.editable && !rollData.rnkEnded,
             showStrifeBt: options.editable && rollData.summary.strife > 0 && rollData.actor?.isCharacterType,
             showTargetFatigue,
+            showOpportunities,
+            opportunityOptions,
             cssClass: this.options.classes.join(" "),
             data: this.object,
             l5r5e: rollData,
@@ -456,6 +806,8 @@ export class RollnKeepDialog extends FormApplication {
                 bonus: fatigueContext.bonus,
                 defense: fatigueContext.defense,
             },
+            opportunities: opportunitiesData,
+            canEditOpportunities: this.options.editable,
         };
     }
 
@@ -496,6 +848,12 @@ export class RollnKeepDialog extends FormApplication {
                 this.submit();
             }
         });
+
+        html.find(".opportunity-option").on("click", (event) => this._onOpportunityOptionClick(event, html));
+        html.find(".selected-opportunity").on("click", (event) => this._onOpportunitySelectionRemove(event, html));
+        html.find('input[name="opportunities.available"]').on("change", (event) =>
+            this._onOpportunityAvailableChange(event, html)
+        );
     }
 
     /**
@@ -1044,9 +1402,13 @@ export class RollnKeepDialog extends FormApplication {
         }
 
         // Last step strife choice
+        const formOpportunities = formData.opportunities ?? {};
         if (
             this.roll?.l5r5e?.rnkEnded &&
-            (formData.strifeApplied !== undefined || formData.targetFatigue !== undefined)
+            (formData.strifeApplied !== undefined ||
+                formData.targetFatigue !== undefined ||
+                formOpportunities.available !== undefined ||
+                (this.object.opportunities?.selections?.length ?? 0) > 0)
         ) {
             let refreshChat = false;
 
@@ -1077,6 +1439,15 @@ export class RollnKeepDialog extends FormApplication {
                 const fatigueChanged = await this._applyTargetFatigueUpdate(formData.targetFatigue);
                 refreshChat = refreshChat || fatigueChanged;
             }
+
+            if (formOpportunities.available !== undefined) {
+                const parsedAvailable = Math.max(0, Number(formOpportunities.available) || 0);
+                this.object.opportunities.available = parsedAvailable;
+                this._recalculateOpportunityRemaining();
+            }
+
+            const opportunitiesChanged = this._applyOpportunitySelections();
+            refreshChat = refreshChat || opportunitiesChanged;
 
             if (refreshChat) {
                 await this._toChatMessage();

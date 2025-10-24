@@ -175,6 +175,12 @@
         </tr>
         <tr>
             <td colspan="3">
+                <label for="declared_goal">{{localize 'l5r5e.dice.dicepicker.goal_label'}}</label>
+                <textarea id="declared_goal" name="goal" rows="2">{{data.goal}}</textarea>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="3">
                 <button name="roll" type="submit" {{#if disableSubmit}}disabled{{/if}}>{{localize 'l5r5e.dice.dicepicker.roll_label'}} <i class='fas fa-arrow-circle-right'></i></button>
             </td>
         </tr>

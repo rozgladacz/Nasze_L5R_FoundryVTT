@@ -221,6 +221,9 @@
                 "successes": "Succès",
                 "explosives": "Explosifs",
                 "opportunities": "Aubaines",
+                "opportunities_spent": "Aubaines dépensées",
+                "opportunity_damage": "Bonus de dégâts grâce aux aubaines : +{{value}}",
+                "opportunity_critical": "Bonus critique grâce aux aubaines : +{{value}}",
                 "strife": "Conflits",
                 "difficulty": "ND",
                 "difficulty_hidden": "???",
@@ -241,6 +244,7 @@
                 "use_void_point_label": "Dépenser un",
                 "void_point_tooltip": "Point de Vide",
                 "skill_assistance_label": "Assistance",
+                "goal_label": "Objectif déclaré",
                 "roll_label": "Lancer",
                 "bt_add_macro": "Ajouter une macro",
                 "gm_request_dp_to_players": "Demande de jet envoyée aux joueurs"
@@ -254,7 +258,15 @@
                 "max": "Max",
                 "bt_validate": "Finaliser cette étape",
                 "bt_strife": "Appliquer le conflit",
-                "undo": "[GM] Annuler les choix de la dernière étape"
+                "undo": "[GM] Annuler les choix de la dernière étape",
+                "opportunities": {
+                    "available": "Opportunités disponibles",
+                    "remainingLabel": "Restantes : {{remaining}}",
+                    "optionsTitle": "Dépenser les opportunités",
+                    "selectedTitle": "Opportunités choisies",
+                    "remove": "Retirer la sélection",
+                    "none": "Aucune opportunité contextuelle disponible."
+                }
             }
         },
         "gm": {
@@ -702,6 +714,26 @@
             "ivory_kingdoms": "Royaumes d'Ivoire",
             "qamarist": "Qamarist",
             "ujik": "Ujik"
+        },
+        "opportunities": {
+            "calmingBreath": {
+                "title": "Respiration apaisante",
+                "description": "Concentrez votre respiration pour stabiliser votre résolution.",
+                "effect": "Réduisez votre conflit de 1.",
+                "note": "Vous apaisez vos émotions et réduisez votre conflit de 1."
+            },
+            "pressTheAttack": {
+                "title": "Pousser l'assaut",
+                "description": "Renforcez votre attaque pour porter un coup décisif.",
+                "effect": "Ajoutez +2 au prochain jet de dégâts de cette attaque.",
+                "note": "Votre assaut prend de l'élan et ajoute +{{amount}} dégâts au coup."
+            },
+            "seizeTheMoment": {
+                "title": "Saisir l'instant",
+                "description": "Préparez-vous à exploiter une ouverture.",
+                "effect": "Augmentez de 1 la gravité de la prochaine frappe critique.",
+                "note": "Vous guettez l'ouverture et augmentez de 1 la gravité de la prochaine frappe critique."
+            }
         },
         "demeanor": {
             "adaptable": "Adaptable",

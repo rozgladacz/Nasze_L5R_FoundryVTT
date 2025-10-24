@@ -221,6 +221,9 @@
                 "successes": "Successes",
                 "explosives": "Explosions",
                 "opportunities": "Opportunities",
+                "opportunities_spent": "Spent opportunities",
+                "opportunity_damage": "Damage bonus from opportunities: +{{value}}",
+                "opportunity_critical": "Critical bonus from opportunities: +{{value}}",
                 "strife": "Strife",
                 "difficulty": "TN",
                 "difficulty_hidden": "???",
@@ -241,6 +244,7 @@
                 "use_void_point_label": "Spend a",
                 "void_point_tooltip": "Void point",
                 "skill_assistance_label": "Assistance",
+                "goal_label": "Declared goal",
                 "roll_label": "Roll",
                 "bt_add_macro": "Add a macro",
                 "gm_request_dp_to_players": "Roll request sent to players",
@@ -255,7 +259,15 @@
                 "max": "Max",
                 "bt_validate": "Finalize this step",
                 "bt_strife": "Apply strife",
-                "undo": "[GM] Undo the last step choices"
+                "undo": "[GM] Undo the last step choices",
+                "opportunities": {
+                    "available": "Available opportunities",
+                    "remainingLabel": "Remaining: {{remaining}}",
+                    "optionsTitle": "Spend opportunities",
+                    "selectedTitle": "Chosen opportunities",
+                    "remove": "Remove selection",
+                    "none": "No contextual opportunities are currently available."
+                }
             }
         },
         "gm": {
@@ -703,6 +715,26 @@
             "ivory_kingdoms": "Ivory Kingdoms",
             "qamarist": "Qamarist",
             "ujik": "Ujik"
+        },
+        "opportunities": {
+            "calmingBreath": {
+                "title": "Calming Breath",
+                "description": "Focus your breathing to steady your resolve.",
+                "effect": "Reduce your strife by 1.",
+                "note": "You steady your emotions, reducing your strife by 1."
+            },
+            "pressTheAttack": {
+                "title": "Press the Attack",
+                "description": "Push your assault to strike a telling blow.",
+                "effect": "Add +2 to the next damage roll of this attack.",
+                "note": "The assault builds momentum, adding +{{amount}} damage to the strike."
+            },
+            "seizeTheMoment": {
+                "title": "Seize the Moment",
+                "description": "Prepare to capitalize on an opening.",
+                "effect": "Increase the severity of the next critical strike by 1.",
+                "note": "You watch for an opening, increasing the next critical strike by 1 severity."
+            }
         },
         "demeanor": {
             "adaptable": "Adaptable",

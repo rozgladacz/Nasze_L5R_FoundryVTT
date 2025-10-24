@@ -126,6 +126,38 @@
             </div>
             {{/if}}
             {{/l5r5e.summary}}
+            {{#if l5r5e.opportunitySelections.length}}
+            <div class="l5r5e opportunity-results">
+                <h4><i class="i_opportunity"></i> {{localize 'l5r5e.dice.chat.opportunities_spent'}}</h4>
+                <ul>
+                    {{#each l5r5e.opportunitySelections}}
+                    <li>
+                        <strong>{{title}}</strong> (<i class="i_opportunity"></i>x{{cost}})
+                        {{#if effectSummaries.length}}
+                        <ul class="effects">
+                            {{#each effectSummaries}}
+                            <li>{{this}}</li>
+                            {{/each}}
+                        </ul>
+                        {{/if}}
+                        {{#if notes.length}}
+                        <div class="notes">
+                            {{#each notes}}
+                            <p>{{this}}</p>
+                            {{/each}}
+                        </div>
+                        {{/if}}
+                    </li>
+                    {{/each}}
+                </ul>
+                {{#if l5r5e.opportunityBonuses.damage}}
+                <p class="bonus">{{localize 'l5r5e.dice.chat.opportunity_damage' value=l5r5e.opportunityBonuses.damage}}</p>
+                {{/if}}
+                {{#if l5r5e.opportunityBonuses.critical}}
+                <p class="bonus">{{localize 'l5r5e.dice.chat.opportunity_critical' value=l5r5e.opportunityBonuses.critical}}</p>
+                {{/if}}
+            </div>
+            {{/if}}
         </div>
         {{/if}}
 

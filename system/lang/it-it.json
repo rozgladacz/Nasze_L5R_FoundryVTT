@@ -221,6 +221,9 @@
                 "successes": "Successi",
                 "explosives": "Esplosioni",
                 "opportunities": "Opportunità",
+                "opportunities_spent": "Opportunità spese",
+                "opportunity_damage": "Bonus ai danni dalle opportunità: +{{value}}",
+                "opportunity_critical": "Bonus critico dalle opportunità: +{{value}}",
                 "strife": "Turbamento",
                 "difficulty": "TN",
                 "difficulty_hidden": "???",
@@ -241,6 +244,7 @@
                 "use_void_point_label": "Spendi un",
                 "void_point_tooltip": "Punto Vuoto",
                 "skill_assistance_label": "Aiuto",
+                "goal_label": "Obiettivo dichiarato",
                 "roll_label": "Tira",
                 "bt_add_macro": "Aggiungi una macro",
                 "gm_request_dp_to_players": "Roll request sent to players"
@@ -254,7 +258,15 @@
                 "max": "Max",
                 "bt_validate": "Conferma",
                 "bt_strife": "Aggiungi Turbamento",
-                "undo": "[GM] Annulla l'ultima scelta"
+                "undo": "[GM] Annulla l'ultima scelta",
+                "opportunities": {
+                    "available": "Opportunità disponibili",
+                    "remainingLabel": "Rimanenti: {{remaining}}",
+                    "optionsTitle": "Spendi le opportunità",
+                    "selectedTitle": "Opportunità scelte",
+                    "remove": "Rimuovi selezione",
+                    "none": "Nessuna opportunità contestuale disponibile."
+                }
             }
         },
         "gm": {
@@ -702,6 +714,26 @@
             "ivory_kingdoms": "Regni d'Avorio",
             "qamarist": "Qamarista",
             "ujik": "Ujik"
+        },
+        "opportunities": {
+            "calmingBreath": {
+                "title": "Respiro calmante",
+                "description": "Concentrati sul respiro per rinsaldare la tua determinazione.",
+                "effect": "Riduci il tuo turbamento di 1.",
+                "note": "Placando le emozioni riduci il tuo turbamento di 1."
+            },
+            "pressTheAttack": {
+                "title": "Premi l'assalto",
+                "description": "Spingi l'attacco per infliggere un colpo decisivo.",
+                "effect": "Aggiungi +2 al prossimo tiro di danno di questo attacco.",
+                "note": "L'assalto guadagna slancio e aggiunge +{{amount}} danni al colpo."
+            },
+            "seizeTheMoment": {
+                "title": "Cogli l'attimo",
+                "description": "Preparati a sfruttare un'apertura.",
+                "effect": "Aumenta di 1 la gravità del prossimo colpo critico.",
+                "note": "Resti in attesa dell'apertura giusta, aumentando di 1 la gravità del prossimo colpo critico."
+            }
         },
         "demeanor": {
             "adaptable": "Flessibile",
