@@ -30,6 +30,7 @@ export class RollL5r5e extends Roll {
         summary: {
             totalSuccess: 0,
             totalBonus: 0,
+            fireBonus: 0,
             success: 0,
             explosive: 0,
             opportunity: 0,
@@ -123,6 +124,7 @@ export class RollL5r5e extends Roll {
         summary.opportunity = 0;
         summary.strife = 0;
         summary.totalSuccess = 0;
+        summary.fireBonus = 0;
 
         // Current terms - L5R Summary
         this.terms.forEach((term) => this._l5rTermSummary(term));
@@ -135,7 +137,13 @@ export class RollL5r5e extends Roll {
             (term) => term instanceof foundry.dice.terms.DiceTerm && !(term instanceof game.l5r5e.L5rBaseDie)
         ); // ignore math symbols
         this.l5r5e.dicesTypes.l5r = this.dice.some((term) => term instanceof game.l5r5e.L5rBaseDie);
-        summary.totalBonus = Math.max(0, summary.totalSuccess - this.l5r5e.difficulty);
+        const baseMargin = summary.totalSuccess - this.l5r5e.difficulty;
+        summary.totalBonus = Math.max(0, baseMargin);
+
+        if (baseMargin >= 0 && this.l5r5e.stance === "fire") {
+            summary.fireBonus = summary.strife;
+            summary.totalBonus += summary.fireBonus;
+        }
 
         if (!this.l5r5e.keepLimit) {
             // count ring die + skill assistance
