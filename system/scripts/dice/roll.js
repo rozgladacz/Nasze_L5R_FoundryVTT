@@ -30,6 +30,8 @@ export class RollL5r5e extends Roll {
         summary: {
             totalSuccess: 0,
             totalBonus: 0,
+            baseTotalSuccess: 0,
+            stanceBonus: 0,
             success: 0,
             explosive: 0,
             opportunity: 0,
@@ -123,12 +125,23 @@ export class RollL5r5e extends Roll {
         summary.opportunity = 0;
         summary.strife = 0;
         summary.totalSuccess = 0;
+        summary.baseTotalSuccess = 0;
+        summary.stanceBonus = 0;
 
         // Current terms - L5R Summary
         this.terms.forEach((term) => this._l5rTermSummary(term));
 
         // Check inner L5R rolls - L5R Summary
         this._dice.forEach((term) => this._l5rTermSummary(term));
+
+        // Capture base total successes before applying any stance logic
+        summary.baseTotalSuccess = summary.totalSuccess;
+
+        // Apply stance bonuses (Fire stance converts strife into bonus successes on a hit)
+        if (this.l5r5e.stance === "fire" && summary.baseTotalSuccess >= this.l5r5e.difficulty) {
+            summary.stanceBonus = summary.strife;
+            summary.totalSuccess += summary.stanceBonus;
+        }
 
         // Store final outputs
         this.l5r5e.dicesTypes.std = this.dice.some(
