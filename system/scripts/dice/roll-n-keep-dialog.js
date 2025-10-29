@@ -101,11 +101,13 @@ export class RollnKeepDialog extends FormApplication {
      * @param {number} messageId
      * @param {FormApplicationOptions} options
      */
-    constructor(messageId, options = {}, initialActionTags = undefined) {
+    constructor(messageId, options = {}) {
         const normalizedOptions = options ? { ...options } : {};
-        let actionTags = initialActionTags;
-        if (actionTags === undefined && normalizedOptions?.initialActionTags !== undefined) {
-            actionTags = normalizedOptions.initialActionTags;
+        let actionTags = normalizedOptions?.initialActionTags;
+        if (actionTags === undefined && arguments.length > 2) {
+            actionTags = arguments[2];
+        }
+        if (normalizedOptions?.initialActionTags !== undefined) {
             delete normalizedOptions.initialActionTags;
         }
 
