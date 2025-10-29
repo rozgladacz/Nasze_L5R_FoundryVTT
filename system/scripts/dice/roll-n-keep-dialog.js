@@ -2,6 +2,8 @@
  * L5R Dice Roll n Keep dialog
  * @extends {FormApplication}
  */
+const DEFAULT_ACTION_TYPES = Object.freeze(["attack", "scheme", "support", "move"]);
+
 export class RollnKeepDialog extends FormApplication {
     /**
      * Player choice list
@@ -99,10 +101,19 @@ export class RollnKeepDialog extends FormApplication {
      * @param {number} messageId
      * @param {FormApplicationOptions} options
      */
-    constructor(messageId, options = {}) {
-        super({}, options);
+    constructor(messageId, options = {}, initialActionTags = undefined) {
+        const normalizedOptions = options ? { ...options } : {};
+        let actionTags = initialActionTags;
+        if (actionTags === undefined && normalizedOptions?.initialActionTags !== undefined) {
+            actionTags = normalizedOptions.initialActionTags;
+            delete normalizedOptions.initialActionTags;
+        }
+
+        super({}, normalizedOptions);
         this.message = game.messages.get(messageId);
         this.options.editable = this.isOwner;
+
+        this._initialActionTags = RollnKeepDialog._normalizeActionTags(actionTags);
 
         this._initializeDiceFaces();
         this._initializeHistory();
@@ -147,6 +158,8 @@ export class RollnKeepDialog extends FormApplication {
         // Get the roll
         this.roll = this.messageRoll;
 
+        this._applyInitialActionTags();
+
         // Already history
         if (Array.isArray(this.roll.l5r5e.history)) {
             this.object.dicesList = this.roll.l5r5e.history;
@@ -173,6 +186,84 @@ export class RollnKeepDialog extends FormApplication {
                 });
             });
         });
+    }
+
+    /**
+     * Normalize action tags input.
+     *
+     * @param {object|string|string[]|undefined|null} actionTags
+     * @returns {object|null}
+     * @private
+     */
+    static _normalizeActionTags(actionTags) {
+        if (actionTags === undefined || actionTags === null) {
+            return null;
+        }
+
+        let tagsObject = actionTags;
+        if (Array.isArray(tagsObject)) {
+            tagsObject = tagsObject.reduce((acc, key) => {
+                if (typeof key === "string") {
+                    acc[key] = true;
+                }
+                return acc;
+            }, {});
+        } else if (typeof tagsObject === "string") {
+            tagsObject = { [tagsObject]: true };
+        } else if (typeof tagsObject === "object") {
+            tagsObject = foundry.utils.deepClone(tagsObject);
+        } else {
+            return null;
+        }
+
+        const normalized = {};
+        for (const [key, value] of Object.entries(tagsObject)) {
+            if (typeof key !== "string") {
+                continue;
+            }
+            normalized[key] = !!value;
+        }
+
+        return Object.keys(normalized).length ? normalized : null;
+    }
+
+    /**
+     * Apply initial action tags to the current roll if provided.
+     *
+     * @private
+     */
+    _applyInitialActionTags() {
+        if (!this._initialActionTags || !this.roll?.l5r5e) {
+            return;
+        }
+
+        const currentActions = foundry.utils.mergeObject(
+            DEFAULT_ACTION_TYPES.reduce((acc, key) => {
+                acc[key] = false;
+                return acc;
+            }, {}),
+            this.roll.l5r5e.actions || {},
+            { inplace: false }
+        );
+
+        let updated = !this.roll.l5r5e.actions;
+        for (const [key, value] of Object.entries(this._initialActionTags)) {
+            const boolValue = !!value;
+            if (currentActions[key] === undefined && !DEFAULT_ACTION_TYPES.includes(key)) {
+                currentActions[key] = boolValue;
+                updated = true;
+                continue;
+            }
+
+            if (currentActions[key] !== boolValue) {
+                currentActions[key] = boolValue;
+                updated = true;
+            }
+        }
+
+        if (updated) {
+            this.roll.l5r5e.actions = currentActions;
+        }
     }
 
     /**
