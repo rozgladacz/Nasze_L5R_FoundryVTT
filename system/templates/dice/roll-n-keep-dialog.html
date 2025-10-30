@@ -15,24 +15,52 @@
                     {{#if l5r5e.skillCatId}}{{localizeSkill l5r5e.skillCatId 'title'}}{{/if}}
                 {{/if}}
             </li>
-            <li class="chat-profil-element">
-                {{localize 'l5r5e.dice.chat.difficulty'}}
-                {{#if l5r5e.difficultyHidden}}
-                    {{#if isGM}}
-                        {{l5r5e.difficulty}} <i class="fas fa-eye-slash" title="{{localize 'l5r5e.dice.dicepicker.difficulty_hidden_label'}}"></i>
-                    {{else}}
-                        <span title="{{localize 'l5r5e.dice.dicepicker.difficulty_hidden_label'}}">{{localize 'l5r5e.dice.chat.difficulty_hidden'}}</span>
-                    {{/if}}
-                {{else}}
-                    {{l5r5e.difficulty}}
-                {{/if}}
-                <br>
+            <li class="chat-profil-element chat-profil-summary">
+                <div class="difficulty-value">
+                    <span class="label">{{localize 'l5r5e.dice.chat.difficulty'}}</span>
+                    <span class="value">
+                        {{#if l5r5e.difficultyHidden}}
+                            {{#if isGM}}
+                                {{l5r5e.difficulty}} <i class="fas fa-eye-slash" title="{{localize 'l5r5e.dice.dicepicker.difficulty_hidden_label'}}"></i>
+                            {{else}}
+                                <span title="{{localize 'l5r5e.dice.dicepicker.difficulty_hidden_label'}}">{{localize 'l5r5e.dice.chat.difficulty_hidden'}}</span>
+                            {{/if}}
+                        {{else}}
+                            {{l5r5e.difficulty}}
+                        {{/if}}
+                    </span>
+                </div>
                 {{#if l5r5e.voidPointUsed}}
+                <div class="rnk-modifiers">
                     <i class="i_void" title="{{localize 'l5r5e.dice.chat.void_point_used'}}"></i>
+                    {{#if l5r5e.skillAssistance}}
+                        <i class="i_skill" title="{{l5r5e.skillAssistance}}x {{localize 'l5r5e.dice.chat.assistance_used'}}"></i>
+                    {{/if}}
+                </div>
+                {{else}}
+                    {{#if l5r5e.skillAssistance}}
+                    <div class="rnk-modifiers">
+                        <i class="i_skill" title="{{l5r5e.skillAssistance}}x {{localize 'l5r5e.dice.chat.assistance_used'}}"></i>
+                    </div>
+                    {{/if}}
                 {{/if}}
-                {{#if l5r5e.skillAssistance}}
-                    <i class="i_skill" title="{{l5r5e.skillAssistance}}x {{localize 'l5r5e.dice.chat.assistance_used'}}"></i>
-                {{/if}}
+                {{#with l5r5e.summary}}
+                <div class="rnk-summary">
+                    <span class="summary-item" title="{{localize 'l5r5e.dice.chat.successes'}}">
+                        <span class="summary-value">{{#if success}}{{success}}{{else}}0{{/if}}</span>
+                        <i class="i_success"></i>
+                    </span>
+                    <span class="summary-item" title="{{localize 'l5r5e.dice.chat.opportunities'}}">
+                        <span class="summary-value">{{#if opportunity}}{{opportunity}}{{else}}0{{/if}}</span>
+                        <i class="i_opportunity"></i>
+                    </span>
+                    <span class="summary-item" title="{{localize 'l5r5e.dice.chat.strife'}}">
+                        <span class="summary-value">{{#if strife}}{{strife}}{{else}}0{{/if}}</span>
+                        <i class="i_strife"></i>
+                        {{#if ../strifeApplied}}<sup class="applied">{{../strifeApplied}}</sup>{{/if}}
+                    </span>
+                </div>
+                {{/with}}
             </li>
         </ul>
     </header>
@@ -147,7 +175,7 @@
                         <button type="button" class="apply-adjust pointer-choice" data-field="strifeApplied" data-delta="-1">-</button>
                         <input type="number" name="strifeApplied" data-dtype="Number" value="{{l5r5e.strifeApplied}}" min="0" step="1">
                         <button type="button" class="apply-adjust pointer-choice" data-field="strifeApplied" data-delta="1">+</button>
-                        <span class="apply-value-display">{{l5r5e.strifeApplied}}</span> <i class="i_strife"></i>
+                        <span class="apply-value-display">{{l5r5e.strifeApplied}}</span>
                     </div>
                 </div>
                 {{/if}}
