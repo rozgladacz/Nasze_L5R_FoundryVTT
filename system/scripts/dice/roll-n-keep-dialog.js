@@ -231,6 +231,15 @@ export class RollnKeepDialog extends FormApplication {
                 permissions: { dragstart: this.isEditable, drop: this.isEditable },
                 callbacks: { dragstart: this._onDragStart.bind(this), drop: this._onDropItem.bind(this) },
             }),
+            new foundry.applications.ux.DragDrop.implementation({
+                dragSelector: ".faces-change",
+                dropSelector: ".dice.draggable",
+                permissions: { dragstart: this.isEditable, drop: this.isEditable },
+                callbacks: {
+                    dragstart: this._onSwapDragStart.bind(this),
+                    drop: this._onSwapDrop.bind(this),
+                },
+            }),
         ];
     }
 
@@ -245,6 +254,32 @@ export class RollnKeepDialog extends FormApplication {
             JSON.stringify({
                 step: target.data("step"),
                 die: target.data("die"),
+            })
+        );
+    }
+
+    /**
+     * Callback for swap drag start actions.
+     * @param {DragEvent} event The originating DragEvent
+     * @private
+     */
+    _onSwapDragStart(event) {
+        const target = event.currentTarget;
+        if (!target) {
+            return;
+        }
+
+        const { die: dieType, face } = target.dataset ?? {};
+        if (!dieType || !face) {
+            return;
+        }
+
+        event.dataTransfer.setData(
+            "text/plain",
+            JSON.stringify({
+                choice: RollnKeepDialog.CHOICES.swap,
+                dieType,
+                face,
             })
         );
     }
@@ -514,8 +549,14 @@ export class RollnKeepDialog extends FormApplication {
             return;
         }
 
-        const data = JSON.parse(json);
-        if (!data) {
+        let data = null;
+        try {
+            data = JSON.parse(json);
+        } catch (err) {
+            return false;
+        }
+
+        if (!data || data.choice === RollnKeepDialog.CHOICES.swap) {
             return;
         }
 
@@ -548,6 +589,76 @@ export class RollnKeepDialog extends FormApplication {
         current.choice = type;
 
         // Little time saving : if we reach the max kept dices, discard all dices without a choice
+        if (
+            this._checkKeepCount(this.object.currentStep) &&
+            this._getKeepCount(this.object.currentStep) === this.roll.l5r5e.keepLimit
+        ) {
+            this._forceChoiceForDiceWithoutOne(RollnKeepDialog.CHOICES.discard);
+        }
+
+        this.render(false);
+        return false;
+    }
+
+    /**
+     * Handle dropping a swap face directly on a die result.
+     * @param {DragEvent} event
+     * @returns {boolean}
+     * @private
+     */
+    _onSwapDrop(event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (!this.isEditable) {
+            return false;
+        }
+
+        const json = event.dataTransfer.getData("text/plain");
+        if (!json) {
+            return false;
+        }
+
+        let data = null;
+        try {
+            data = JSON.parse(json);
+        } catch (err) {
+            return false;
+        }
+
+        if (!data || data.choice !== RollnKeepDialog.CHOICES.swap) {
+            return false;
+        }
+
+        const { step, die } = event.currentTarget.dataset ?? {};
+        const stepIndex = Number(step);
+        const dieIndex = Number(die);
+
+        if (!Number.isInteger(stepIndex) || !Number.isInteger(dieIndex)) {
+            return false;
+        }
+
+        if (stepIndex !== this.object.currentStep) {
+            return false;
+        }
+
+        const current = this.object.dicesList?.[stepIndex]?.[dieIndex];
+        if (!current) {
+            return false;
+        }
+
+        delete current.newFace;
+
+        if (current.type !== data.dieType || current.face === data.face) {
+            current.choice = RollnKeepDialog.CHOICES.nothing;
+            this.render(false);
+            return false;
+        }
+
+        current.newFace = data.face;
+        current.choice = RollnKeepDialog.CHOICES.swap;
+        this._forceChoiceForDiceWithoutOne(RollnKeepDialog.CHOICES.keep);
+
         if (
             this._checkKeepCount(this.object.currentStep) &&
             this._getKeepCount(this.object.currentStep) === this.roll.l5r5e.keepLimit
