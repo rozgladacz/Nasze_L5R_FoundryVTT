@@ -64,7 +64,7 @@
                 </legend>
 
                 {{#each data.swapDiceFaces.rings}}
-                    <div class="dice dropbox faces-change" data-type="swap" data-face="{{this}}" data-die="RingDie">
+                    <div class="dice dropbox faces-change" data-type="swap" data-face="{{this}}" data-die="RingDie" draggable="true">
                         <img src="{{getDiceFaceUrl 'RingDie' this}}" alt="{{this}}" />
                     </div>
                 {{/each}}
@@ -91,11 +91,11 @@
                                 {{#if dice.face}}
                                     {{#if dice.newFace}}
                                         <span class="fas dice-ct {{dice.choice}}">
-                                            <img class="dice {{dice.choice}}{{#ifCond ../../data.currentStep '==' idxStep}} draggable{{/ifCond}}" data-step="{{idxStep}}" data-die="{{idxDie}}" src="{{getDiceFaceUrl dice.type dice.newFace}}" alt="{{idxStep}}_{{idxDie}}" />
+                                            <img class="dice {{dice.choice}}{{#ifCond ../../data.currentStep '==' idxStep}} draggable{{/ifCond}}" data-step="{{idxStep}}" data-die="{{idxDie}}" src="{{getDiceFaceUrl dice.type dice.newFace}}" alt="{{idxStep}}_{{idxDie}}" draggable="{{#ifCond ../../data.currentStep '==' idxStep}}true{{else}}false{{/ifCond}}" />
                                         </span>
                                     {{else}}
                                         <span class="fas dice-ct {{dice.choice}}">
-                                            <img class="dice {{dice.choice}}{{#ifCond ../../data.currentStep '==' idxStep}} draggable{{/ifCond}}" data-step="{{idxStep}}" data-die="{{idxDie}}" src="{{getDiceFaceUrl dice.type dice.face}}" alt="{{idxStep}}_{{idxDie}}" />
+                                            <img class="dice {{dice.choice}}{{#ifCond ../../data.currentStep '==' idxStep}} draggable{{/ifCond}}" data-step="{{idxStep}}" data-die="{{idxDie}}" src="{{getDiceFaceUrl dice.type dice.face}}" alt="{{idxStep}}_{{idxDie}}" draggable="{{#ifCond ../../data.currentStep '==' idxStep}}true{{else}}false{{/ifCond}}" />
                                         </span>
                                     {{/if}}
                                 {{/if}}
@@ -117,7 +117,7 @@
                     <i class="fa fa-sign-in-alt" aria-hidden="true"></i> {{localize 'l5r5e.dice.roll_n_keep.swap_drop_here'}} <i class="fa fa-arrows-alt-h"></i>
                 </legend>
                 {{#each data.swapDiceFaces.skills}}
-                    <div class="dice dropbox faces-change" data-type="swap" data-face="{{this}}" data-die="AbilityDie">
+                    <div class="dice dropbox faces-change" data-type="swap" data-face="{{this}}" data-die="AbilityDie" draggable="true">
                         <img src="{{getDiceFaceUrl 'AbilityDie' this}}" alt="{{this}}" />
                     </div>
                 {{/each}}
