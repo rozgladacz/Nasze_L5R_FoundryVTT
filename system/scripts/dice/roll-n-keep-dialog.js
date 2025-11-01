@@ -306,6 +306,7 @@ export class RollnKeepDialog extends FormApplication {
             description: "",
             baseValue: 0,
             modifier: 0,
+            hasValue: false,
             priority: Number.isFinite(effect?.priority) ? Number(effect.priority) : 0,
             status: RollnKeepDialog.EFFECT_ENTRY_STATUS.active,
             finalMacro: null,
@@ -336,11 +337,13 @@ export class RollnKeepDialog extends FormApplication {
             const baseValueCandidate = Number(entryData.baseValue ?? entryData.base ?? entryData.value ?? entryData.amount);
             if (Number.isFinite(baseValueCandidate)) {
                 baseEntry.baseValue = Number(baseValueCandidate);
+                baseEntry.hasValue = true;
             }
 
             const modifierCandidate = Number(entryData.modifier ?? entryData.adjustment ?? entryData.delta ?? 0);
             if (Number.isFinite(modifierCandidate)) {
                 baseEntry.modifier = Number(modifierCandidate);
+                baseEntry.hasValue = true;
             }
 
             const paramsData = entryData.params ?? entryData.parameters ?? entryData.data ?? null;
@@ -357,6 +360,12 @@ export class RollnKeepDialog extends FormApplication {
             const detailsCandidate = entryData.details ?? entryData.note ?? entryData.tooltip ?? null;
             if (detailsCandidate !== null && detailsCandidate !== undefined) {
                 baseEntry.details = detailsCandidate;
+            }
+
+            const hasValueCandidate =
+                entryData.hasValue ?? entryData.allowModifier ?? entryData.numeric ?? entryData.hasNumericValue;
+            if (hasValueCandidate !== undefined) {
+                baseEntry.hasValue = Boolean(hasValueCandidate);
             }
 
             const macroCandidate =
@@ -407,6 +416,13 @@ export class RollnKeepDialog extends FormApplication {
         }
         entry.params = entry.params && typeof entry.params === "object" ? entry.params : {};
         entry.details = entry.details ?? entry.note ?? null;
+        if (typeof stored.hasValue === "boolean") {
+            entry.hasValue = stored.hasValue;
+        } else if (typeof stored.allowModifier === "boolean") {
+            entry.hasValue = stored.allowModifier;
+        } else {
+            entry.hasValue = entry.baseValue !== 0 || entry.modifier !== 0;
+        }
         this._updateEffectEntryTotals(entry);
         return entry;
     }
@@ -420,6 +436,7 @@ export class RollnKeepDialog extends FormApplication {
         const base = Number.isFinite(entry.baseValue) ? Number(entry.baseValue) : 0;
         const modifier = Number.isFinite(entry.modifier) ? Number(entry.modifier) : 0;
         entry.totalValue = base + modifier;
+        entry.hasValue = Boolean(entry.hasValue);
     }
 
     /**
@@ -528,6 +545,8 @@ export class RollnKeepDialog extends FormApplication {
                         normalized.modifier = Number.isFinite(previous.modifier)
                             ? Number(previous.modifier)
                             : normalized.modifier;
+                        normalized.hasValue =
+                            typeof previous.hasValue === "boolean" ? previous.hasValue : normalized.hasValue;
                         normalized.status = previous.status ?? normalized.status;
                         normalized.priority = Number.isFinite(previous.priority)
                             ? Number(previous.priority)
@@ -618,6 +637,7 @@ export class RollnKeepDialog extends FormApplication {
             finalMacro: entry.finalMacro,
             params: entry.params,
             details: entry.details,
+            hasValue: entry.hasValue,
         }));
 
         const previous = JSON.stringify(this.object.effectResults ?? []);
@@ -990,6 +1010,20 @@ export class RollnKeepDialog extends FormApplication {
             return acc;
         }, {});
 
+        const effectEntries = Array.isArray(this.object.effectEntries) ? this.object.effectEntries : [];
+        const decoratedEffectEntries = effectEntries.map((entry) => {
+            const clone = foundry.utils.deepClone(entry);
+            clone.baseValue = Number.isFinite(clone.baseValue) ? Number(clone.baseValue) : 0;
+            clone.modifier = Number.isFinite(clone.modifier) ? Number(clone.modifier) : 0;
+            clone.totalValue = Number.isFinite(clone.totalValue) ? Number(clone.totalValue) : clone.baseValue + clone.modifier;
+            clone.hasValue = Boolean(clone.hasValue);
+            clone.hasFinalMacro = typeof clone.finalMacro === "string" && clone.finalMacro.trim().length > 0;
+            return clone;
+        });
+        const hasRejectedEffects = decoratedEffectEntries.some(
+            (entry) => entry.status === RollnKeepDialog.EFFECT_ENTRY_STATUS.rejected
+        );
+
         return {
             ...(await super.getData(options)),
             isGM: game.user.isGM,
@@ -1004,10 +1038,11 @@ export class RollnKeepDialog extends FormApplication {
             cssClass: this.options.classes.join(" "),
             data: this.object,
             l5r5e: rollData,
-            effectEntries: this.object.effectEntries ?? [],
+            effectEntries: decoratedEffectEntries,
             effectStatuses: RollnKeepDialog.EFFECT_ENTRY_STATUS,
             effectStatusLabels,
             isEditable,
+            hasRejectedEffects,
         };
     }
 
@@ -1166,6 +1201,34 @@ export class RollnKeepDialog extends FormApplication {
             const value = Number(target?.value ?? 0);
             target.value = Number.isNaN(value) ? 0 : value;
             void this._setEffectModifier(effectKey, target.value);
+        });
+
+        html.find(".effect-modifier-adjust").on("click", (event) => {
+            event.preventDefault();
+            const button = event.currentTarget ?? event.target;
+            const effectKey = button?.dataset?.effectKey;
+            if (!effectKey) {
+                return;
+            }
+
+            const delta = Number(button?.dataset?.delta ?? 0);
+            if (Number.isNaN(delta)) {
+                return;
+            }
+
+            const input = html.find(`.effect-entry[data-effect-key="${effectKey}"] input.effect-modifier`).first();
+            if (!input.length) {
+                return;
+            }
+
+            const current = Number(input.val()) || 0;
+            input.val(current + delta);
+            input.trigger("change");
+        });
+
+        html.find(".restore-rejected").on("click", (event) => {
+            event.preventDefault();
+            void this._restoreRejectedEffects();
         });
 
         if ((this.object.effectEntries ?? []).length > 0) {

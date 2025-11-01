@@ -517,11 +517,202 @@
                     color: $l5r5e-label;
                 }
 
+                .effect-entry-meta {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.35rem;
+
+                    i {
+                        font-size: 0.9rem;
+                    }
+
+                    .effect-entry-no-macro {
+                        opacity: 0.7;
+                    }
+                }
+
                 .effect-entry-details {
                     flex: 1;
                     text-align: right;
                     font-style: italic;
                     color: rgba(0, 0, 0, 0.7);
+                }
+            }
+        }
+    }
+
+    .rnk-apply-results {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+
+        .apply-effect-summary {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+
+            .apply-effects-header {
+                display: flex;
+                align-items: center;
+                gap: 0.35rem;
+                font-size: 1rem;
+            }
+
+            .apply-effect-list {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .apply-effect-entry {
+                display: flex;
+                flex-direction: column;
+                gap: 0.4rem;
+                padding: 0.5rem;
+                border-radius: 0.25rem;
+                border: 1px solid rgba(0, 0, 0, 0.1);
+                background: rgba(255, 255, 255, 0.6);
+
+                &.rejected {
+                    opacity: 0.65;
+                }
+
+                &.inactive {
+                    opacity: 0.75;
+                }
+
+                &[data-status="triggered"] {
+                    border-color: #c8a200;
+                }
+
+                &[data-status="completed"] {
+                    border-color: #1f8a1f;
+                }
+
+                .effect-entry-main {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+
+                    .effect-entry-status-indicator {
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 1.25rem;
+                        color: rgba(0, 0, 0, 0.5);
+
+                        i {
+                            font-size: 0.65rem;
+                        }
+                    }
+
+                    .effect-entry-description {
+                        flex: 1;
+                        font-weight: 600;
+                    }
+                }
+
+                .apply-effect-values {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    flex-wrap: wrap;
+
+                    .effect-entry-base,
+                    .effect-entry-total {
+                        min-width: 2.25rem;
+                        text-align: center;
+                        font-weight: 600;
+                    }
+
+                    .effect-entry-modifier-picker {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 0.35rem;
+
+                        button {
+                            width: 1.5rem;
+                            height: 1.5rem;
+                            padding: 0;
+                            line-height: 1.25rem;
+                        }
+
+                        input.effect-modifier {
+                            width: 3rem;
+                            text-align: center;
+                        }
+                    }
+                }
+
+                .apply-effect-details {
+                    font-size: 0.85rem;
+                    color: rgba(0, 0, 0, 0.7);
+                }
+
+                .apply-effect-footer {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 0.5rem;
+                    font-size: 0.85rem;
+
+                    .effect-entry-status-label {
+                        font-weight: 600;
+                        color: $l5r5e-label;
+                    }
+
+                    .effect-entry-macro-indicator {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 0.35rem;
+
+                        i {
+                            font-size: 0.95rem;
+                        }
+
+                        .effect-entry-no-macro {
+                            opacity: 0.7;
+                        }
+                    }
+                }
+
+                &[data-status="active"] .effect-entry-status-indicator {
+                    color: #1f8a1f;
+                }
+
+                &[data-status="rejected"] .effect-entry-status-indicator {
+                    color: #a4161a;
+                }
+
+                &[data-status="triggered"] .effect-entry-status-indicator {
+                    color: #c8a200;
+                }
+
+                &[data-status="completed"] .effect-entry-status-indicator {
+                    color: #1c7ed6;
+                }
+
+                &[data-status="inactive"] .effect-entry-status-indicator {
+                    color: #6c757d;
+                }
+            }
+
+            .apply-effect-actions {
+                display: flex;
+                justify-content: flex-end;
+
+                .restore-rejected {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.35rem;
+                    padding: 0.25rem 0.75rem;
+                    font-size: 0.85rem;
+
+                    i {
+                        font-size: 0.9rem;
+                    }
                 }
             }
         }
