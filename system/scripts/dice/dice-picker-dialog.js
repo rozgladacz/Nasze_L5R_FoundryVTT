@@ -1,5 +1,43 @@
 import { defaultActionsState, getRollActionTypes, normalizeActions } from "./action-types.js";
 
+function normalizeRollEffects(effects) {
+    if (!effects) {
+        return [];
+    }
+
+    const array = Array.isArray(effects) ? effects : [effects];
+    const normalized = array
+        .filter((effect) => effect !== undefined && effect !== null)
+        .map((effect, index) => {
+            if (typeof effect === "string") {
+                return {
+                    macro: effect,
+                    params: {},
+                    order: index,
+                };
+            }
+
+            if (typeof effect === "object") {
+                const parsedOrder = Number(effect.order);
+                const order = Number.isFinite(parsedOrder) ? parsedOrder : index;
+                const params = effect.params ?? effect.parameters ?? {};
+                return {
+                    macro: effect.macro ?? effect.name ?? null,
+                    params: params && typeof params === "object" ? params : {},
+                    order,
+                };
+            }
+
+            return {
+                macro: null,
+                params: {},
+                order: index,
+            };
+        });
+
+    return normalized.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+}
+
 /**
  * L5R Dice picker dialog
  * @extends {FormApplication}
@@ -70,6 +108,7 @@ export class DicePickerDialog extends FormApplication {
         useVoidPoint: false,
         isInitiativeRoll: false,
         actions: {},
+        rollEffects: [],
     };
 
     /**
@@ -87,6 +126,7 @@ export class DicePickerDialog extends FormApplication {
             skillId: "",
             difficulty: 2,
             difficultyHidden: false,
+            rollEffects: [],
         });
     }
 
@@ -185,6 +225,10 @@ export class DicePickerDialog extends FormApplication {
                 this.target = targetToken;
             }
         }
+
+        const rollEffects = normalizeRollEffects(options.rollEffects);
+        this.object.rollEffects = rollEffects;
+        this.options.rollEffects = foundry.utils.deepClone(rollEffects);
 
         // Difficulty
         if (!options.difficulty || !this.parseDifficulty(options.difficulty)) {
@@ -639,6 +683,7 @@ export class DicePickerDialog extends FormApplication {
                 skillAssistance: this.object.skill.assistance,
                 difficultyHidden: this.object.difficulty.hidden,
                 actions: foundry.utils.deepClone(this.object.actions),
+                rollEffects: foundry.utils.deepClone(this.object.rollEffects),
             };
 
             await this._actor.rollInitiative({
@@ -667,6 +712,9 @@ export class DicePickerDialog extends FormApplication {
             roll.l5r5e.skillAssistance = this.object.skill.assistance;
             roll.l5r5e.difficultyHidden = this.object.difficulty.hidden;
             roll.l5r5e.actions = foundry.utils.deepClone(this.object.actions);
+            roll.l5r5e.rollEffects = foundry.utils.deepClone(this.object.rollEffects);
+            roll.l5r5e.effectResults = [];
+            roll.l5r5e.effectStates = {};
 
             await roll.roll();
             message = await roll.toMessage();

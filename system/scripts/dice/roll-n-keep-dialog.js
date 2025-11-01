@@ -39,6 +39,9 @@ export class RollnKeepDialog extends FormApplication {
             skills: [],
         },
         dicesList: [[]],
+        rollEffects: [],
+        effectResults: [],
+        effectStates: {},
     };
 
     /**
@@ -104,6 +107,7 @@ export class RollnKeepDialog extends FormApplication {
         this.message = game.messages.get(messageId);
         this.options.editable = this.isOwner;
 
+        this._syncEffectsFromRoll();
         this._initializeDiceFaces();
         this._initializeHistory();
     }
@@ -115,6 +119,7 @@ export class RollnKeepDialog extends FormApplication {
         if (!this._message) {
             return;
         }
+        this._syncEffectsFromRoll();
         this._initializeHistory();
         this.render(false);
     }
@@ -136,6 +141,29 @@ export class RollnKeepDialog extends FormApplication {
     }
 
     /**
+     * Synchronize local effect tracking data with the provided roll or the currently tracked roll.
+     * @param {RollL5r5e|null} roll
+     * @private
+     */
+    _syncEffectsFromRoll(roll = null) {
+        const sourceRoll = roll ?? this.roll ?? this.messageRoll;
+        if (!sourceRoll) {
+            this.object.rollEffects = [];
+            this.object.effectResults = [];
+            this.object.effectStates = {};
+            return;
+        }
+
+        this.object.rollEffects = foundry.utils.deepClone(sourceRoll.l5r5e?.rollEffects ?? []);
+        this.object.effectResults = foundry.utils.deepClone(sourceRoll.l5r5e?.effectResults ?? []);
+        this.object.effectStates = foundry.utils.deepClone(
+            sourceRoll.l5r5e?.effectStates && typeof sourceRoll.l5r5e.effectStates === "object"
+                ? sourceRoll.l5r5e.effectStates
+                : {}
+        );
+    }
+
+    /**
      * Initialize the dice history list
      * @private
      */
@@ -146,6 +174,7 @@ export class RollnKeepDialog extends FormApplication {
 
         // Get the roll
         this.roll = this.messageRoll;
+        this._syncEffectsFromRoll(this.roll);
 
         // Already history
         if (Array.isArray(this.roll.l5r5e.history)) {
@@ -780,7 +809,17 @@ export class RollnKeepDialog extends FormApplication {
             AbilityDie: [],
         };
 
-        const roll = await new game.l5r5e.RollL5r5e(this._arrayToFormula(newRolls));
+        const roll = await new game.l5r5e.RollL5r5e(
+            this._arrayToFormula(newRolls),
+            {},
+            {
+                l5r5e: {
+                    rollEffects: foundry.utils.deepClone(this.object.rollEffects),
+                    effectResults: foundry.utils.deepClone(this.object.effectResults),
+                    effectStates: foundry.utils.deepClone(this.object.effectStates),
+                },
+            }
+        );
         await roll.roll();
 
         // Show DsN dice for the new roll
@@ -892,6 +931,9 @@ export class RollnKeepDialog extends FormApplication {
             summary: roll.l5r5e.summary,
             history: this.object.dicesList,
         };
+        roll.l5r5e.rollEffects = foundry.utils.deepClone(this.object.rollEffects);
+        roll.l5r5e.effectResults = foundry.utils.deepClone(this.object.effectResults);
+        roll.l5r5e.effectStates = foundry.utils.deepClone(this.object.effectStates);
 
         // Fill the data
         await roll.evaluate();
@@ -919,6 +961,7 @@ export class RollnKeepDialog extends FormApplication {
 
         // Add roll & history to message
         this.roll = roll;
+        this._syncEffectsFromRoll(roll);
     }
 
     /**

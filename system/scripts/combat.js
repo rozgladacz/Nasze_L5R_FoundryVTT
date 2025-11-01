@@ -85,6 +85,7 @@ export class CombatL5r5e extends Combat {
                             difficulty: cfg.difficulty,
                             difficultyHidden: cfg.difficultyHidden,
                             isInitiativeRoll: true,
+                            rollEffects: foundry.utils.deepClone(messageOptions.rollEffects ?? []),
                         }).render(true);
                         continue;
                     }
@@ -129,6 +130,13 @@ export class CombatL5r5e extends Combat {
                             : cfg.difficultyHidden;
                     roll.l5r5e.voidPointUsed = !!messageOptions.useVoidPoint;
                     roll.l5r5e.skillAssistance = messageOptions.skillAssistance || 0;
+                    roll.l5r5e.rollEffects = foundry.utils.deepClone(messageOptions.rollEffects ?? []);
+                    roll.l5r5e.effectResults = foundry.utils.deepClone(messageOptions.effectResults ?? []);
+                    roll.l5r5e.effectStates = foundry.utils.deepClone(
+                        messageOptions.effectStates && typeof messageOptions.effectStates === "object"
+                            ? messageOptions.effectStates
+                            : {}
+                    );
 
                     await roll.roll();
                     rnkMessage = await roll.toMessage({ flavor });
@@ -162,6 +170,7 @@ export class CombatL5r5e extends Combat {
                     difficulty: cfg.difficulty,
                     difficultyHidden: cfg.difficultyHidden,
                     isInitiativeRoll: true,
+                    rollEffects: foundry.utils.deepClone(messageOptions.rollEffects ?? []),
                 },
             });
         }
