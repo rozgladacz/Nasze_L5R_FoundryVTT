@@ -1215,9 +1215,9 @@ export class RollnKeepDialog extends FormApplication {
             return;
         }
 
-        const type = $(event.currentTarget).data("type");
+        const dropType = $(event.currentTarget).data("type");
         const json = event.dataTransfer.getData("text/plain");
-        if (!json || !Object.values(RollnKeepDialog.CHOICES).some((e) => !!e && e === type)) {
+        if (!json || !Object.values(RollnKeepDialog.CHOICES).some((choice) => !!choice && choice === dropType)) {
             return;
         }
 
@@ -1228,14 +1228,70 @@ export class RollnKeepDialog extends FormApplication {
             return false;
         }
 
-        if (!data || data.choice === RollnKeepDialog.CHOICES.swap) {
-            return;
+        if (!data) {
+            return false;
         }
 
-        const current = this.object.dicesList[data.step][data.die];
+        const stepIndex = Number(data.step);
+        const dieIndex = Number(data.die);
+        const hasDieReference = Number.isInteger(stepIndex) && Number.isInteger(dieIndex);
+        const isSwapPayload = data.choice === RollnKeepDialog.CHOICES.swap;
+        const isKeepOrRerollDrop =
+            dropType === RollnKeepDialog.CHOICES.keep || dropType === RollnKeepDialog.CHOICES.reroll;
+
+        if (isSwapPayload && isKeepOrRerollDrop && !hasDieReference) {
+            const dieType = data.dieType;
+            const faceValue = data.face;
+            if (!dieType || faceValue === undefined || faceValue === null) {
+                return false;
+            }
+
+            const currentStepIndex = this.object.currentStep;
+            if (!Array.isArray(this.object.dicesList[currentStepIndex])) {
+                this.object.dicesList[currentStepIndex] = [];
+            }
+
+            const normalizedFace = Number.isNaN(Number(faceValue)) ? faceValue : Number(faceValue);
+            this.object.dicesList[currentStepIndex].push({
+                type: dieType,
+                face: normalizedFace,
+                choice: dropType,
+            });
+
+            this._synchronizeDicesListColumns(currentStepIndex);
+
+            if (dropType === RollnKeepDialog.CHOICES.reroll) {
+                // If reroll, we need to keep all the line by default
+                this._forceChoiceForDiceWithoutOne(RollnKeepDialog.CHOICES.keep);
+            }
+
+            if (
+                this._checkKeepCount(currentStepIndex) &&
+                this._getKeepCount(currentStepIndex) === this.roll.l5r5e.keepLimit
+            ) {
+                this._forceChoiceForDiceWithoutOne(RollnKeepDialog.CHOICES.discard);
+            }
+
+            this.render(false);
+            return false;
+        }
+
+        if (isSwapPayload) {
+            return false;
+        }
+
+        if (!hasDieReference) {
+            return false;
+        }
+
+        const current = this.object.dicesList?.[stepIndex]?.[dieIndex];
+        if (!current) {
+            return false;
+        }
+
         delete current.newFace;
 
-        switch (type) {
+        switch (dropType) {
             case RollnKeepDialog.CHOICES.swap: {
                 // Dice Type Ring/Skill
                 const diceType = $(event.currentTarget).data("die");
@@ -1258,7 +1314,7 @@ export class RollnKeepDialog extends FormApplication {
                 break;
         }
 
-        current.choice = type;
+        current.choice = dropType;
 
         // Little time saving : if we reach the max kept dices, discard all dices without a choice
         if (
@@ -1470,14 +1526,66 @@ export class RollnKeepDialog extends FormApplication {
     }
 
     /**
+     * Return the current maximum number of dice columns across all steps.
+     * @returns {number}
+     * @private
+     */
+    _getDicesListColumnCount() {
+        return this.object.dicesList.reduce((max, step) => {
+            if (!Array.isArray(step)) {
+                return max;
+            }
+            return Math.max(max, step.length);
+        }, 0);
+    }
+
+    /**
+     * Ensure the specified step has at least the provided length, filling missing entries with null.
+     * @param {number} step
+     * @param {number} length
+     * @private
+     */
+    _ensureDicesListStepLength(step, length) {
+        if (!Array.isArray(this.object.dicesList[step])) {
+            this.object.dicesList[step] = [];
+        }
+
+        const stepArray = this.object.dicesList[step];
+        while (stepArray.length < length) {
+            stepArray.push(null);
+        }
+    }
+
+    /**
+     * Synchronize the length of every step with the provided source step.
+     * @param {number} sourceStep
+     * @private
+     */
+    _synchronizeDicesListColumns(sourceStep) {
+        const targetLength = Array.isArray(this.object.dicesList?.[sourceStep])
+            ? this.object.dicesList[sourceStep].length
+            : 0;
+
+        if (targetLength === 0) {
+            return;
+        }
+
+        for (let index = 0; index < this.object.dicesList.length; index += 1) {
+            if (index === sourceStep) {
+                continue;
+            }
+            this._ensureDicesListStepLength(index, targetLength);
+        }
+    }
+
+    /**
      * Initialize dice array for "step" if needed
      * @param {number} step
      * @private
      */
     _initializeDicesListStep(step) {
-        if (!this.object.dicesList[step]) {
-            this.object.dicesList[step] = Array(this.object.dicesList[0].length).fill(null);
-        }
+        const columnCount = this._getDicesListColumnCount();
+        this._ensureDicesListStepLength(step, columnCount);
     }
 
     /**
