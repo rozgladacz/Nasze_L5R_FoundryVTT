@@ -1,5 +1,55 @@
 import { normalizeActions } from "./action-types.js";
 
+const DEFAULT_L5R5E_DATA = {
+    actor: null,
+    dicesTypes: {
+        std: false,
+        l5r: false,
+    },
+    difficulty: 2,
+    difficultyHidden: false,
+    history: null,
+    initialFormula: null,
+    isInitiativeRoll: false,
+    item: null,
+    keepLimit: null,
+    rnkEnded: false,
+    skillAssistance: 0,
+    skillCatId: "",
+    skillId: "",
+    stance: "",
+    strifeApplied: undefined,
+    fatigueApplied: undefined,
+    targetStrifeApplied: undefined,
+    targetFatigueApplied: undefined,
+    summary: {
+        totalSuccess: 0,
+        totalBonus: 0,
+        success: 0,
+        explosive: 0,
+        opportunity: 0,
+        strife: 0,
+    },
+    target: null,
+    hasAppliedResults: false,
+    voidPointUsed: false,
+    actions: {
+        attack: false,
+        scheme: false,
+        support: false,
+        move: false,
+    },
+    applyFlags: {
+        strifeToCharacter: false,
+        fatigueToCharacter: false,
+        strifeToTarget: false,
+        fatigueToTarget: false,
+    },
+    rollEffects: [],
+    effectResults: [],
+    effectStates: {},
+};
+
 /**
  * Roll for L5R5e
  */
@@ -10,55 +60,32 @@ export class RollL5r5e extends Roll {
     /**
      * Specific data for L5R
      */
-    l5r5e = {
-        actor: null,
-        dicesTypes: {
-            std: false,
-            l5r: false,
-        },
-        difficulty: 2,
-        difficultyHidden: false,
-        history: null,
-        initialFormula: null,
-        isInitiativeRoll: false,
-        item: null,
-        keepLimit: null,
-        rnkEnded: false,
-        skillAssistance: 0,
-        skillCatId: "",
-        skillId: "",
-        stance: "",
-        strifeApplied: undefined,
-        fatigueApplied: undefined,
-        targetStrifeApplied: undefined,
-        targetFatigueApplied: undefined,
-        summary: {
-            totalSuccess: 0,
-            totalBonus: 0,
-            success: 0,
-            explosive: 0,
-            opportunity: 0,
-            strife: 0,
-        },
-        target: null,
-        hasAppliedResults: false,
-        voidPointUsed: false,
-        actions: {
-            attack: false,
-            scheme: false,
-            support: false,
-            move: false,
-        },
-        applyFlags: {
-            strifeToCharacter: false,
-            fatigueToCharacter: false,
-            strifeToTarget: false,
-            fatigueToTarget: false,
-        },
-    };
+    l5r5e = foundry.utils.deepClone(DEFAULT_L5R5E_DATA);
 
     constructor(formula, data = {}, options = {}) {
         super(formula, data, options);
+
+        const incomingL5r5e = foundry.utils.mergeObject(
+            foundry.utils.duplicate(data?.l5r5e ?? {}),
+            foundry.utils.duplicate(options?.l5r5e ?? {}),
+            { inplace: false }
+        );
+        this.l5r5e = foundry.utils.mergeObject(
+            foundry.utils.deepClone(DEFAULT_L5R5E_DATA),
+            incomingL5r5e,
+            { inplace: false }
+        );
+
+        this.l5r5e.rollEffects = Array.isArray(this.l5r5e.rollEffects)
+            ? this.l5r5e.rollEffects
+            : [];
+        this.l5r5e.effectResults = Array.isArray(this.l5r5e.effectResults)
+            ? this.l5r5e.effectResults
+            : [];
+        this.l5r5e.effectStates =
+            this.l5r5e.effectStates && typeof this.l5r5e.effectStates === "object"
+                ? this.l5r5e.effectStates
+                : {};
 
         const dataActions =
             data && typeof data === "object"
@@ -414,7 +441,20 @@ export class RollL5r5e extends Roll {
         const roll = super.fromData(data);
 
         roll.data = foundry.utils.duplicate(data.data);
-        roll.l5r5e = foundry.utils.duplicate(data.l5r5e);
+        roll.l5r5e = foundry.utils.mergeObject(
+            foundry.utils.deepClone(DEFAULT_L5R5E_DATA),
+            foundry.utils.duplicate(data?.l5r5e ?? {}),
+            { inplace: false }
+        );
+
+        roll.l5r5e.rollEffects = Array.isArray(roll.l5r5e.rollEffects) ? roll.l5r5e.rollEffects : [];
+        roll.l5r5e.effectResults = Array.isArray(roll.l5r5e.effectResults)
+            ? roll.l5r5e.effectResults
+            : [];
+        roll.l5r5e.effectStates =
+            roll.l5r5e.effectStates && typeof roll.l5r5e.effectStates === "object"
+                ? roll.l5r5e.effectStates
+                : {};
 
         // Get real Actor object
         if (data.l5r5e.actor) {
