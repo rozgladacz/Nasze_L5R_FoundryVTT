@@ -253,6 +253,7 @@
             },
             "roll_n_keep": {
                 "title": "Roll & Keep",
+                "value_label": "Valeur",
                 "discard_drop_here": "Abandonner",
                 "reroll_drop_here": "Relancer",
                 "swap_drop_here": "Modifier",
@@ -277,6 +278,11 @@
                         "reject": "Rejeter",
                         "executeNow": "Exécuter maintenant",
                         "restore": "Restaurer les rejets"
+                    },
+                    "context": {
+                        "reject": "Rejeter l'effet",
+                        "execute": "Exécuter l'effet",
+                        "restore": "Restaurer l'effet"
                     },
                     "status": {
                         "active": "Actif",

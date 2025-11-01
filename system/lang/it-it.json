@@ -253,6 +253,7 @@
             },
             "roll_n_keep": {
                 "title": "Tira e Tieni",
+                "value_label": "Valore",
                 "discard_drop_here": "Lascia",
                 "reroll_drop_here": "Rilancia",
                 "swap_drop_here": "Scambia",
@@ -277,6 +278,11 @@
                         "reject": "Rifiuta",
                         "executeNow": "Esegui ora",
                         "restore": "Ripristina rifiutati"
+                    },
+                    "context": {
+                        "reject": "Rifiuta effetto",
+                        "execute": "Esegui effetto",
+                        "restore": "Ripristina effetto"
                     },
                     "status": {
                         "active": "Attivo",
