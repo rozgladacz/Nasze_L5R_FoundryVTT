@@ -271,6 +271,8 @@
                     "modifierLabel": "Modificador",
                     "totalLabel": "Resultado",
                     "unknownLabel": "Efecto",
+                    "finalMacroLabel": "Macro final disponible",
+                    "noFinalMacro": "Sin macro final",
                     "menu": {
                         "reject": "Rechazar",
                         "executeNow": "Ejecutar ahora",
