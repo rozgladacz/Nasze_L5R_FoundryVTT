@@ -253,6 +253,7 @@
             },
             "roll_n_keep": {
                 "title": "Tirar y guardar",
+                "value_label": "Valor",
                 "discard_drop_here": "Descartar",
                 "reroll_drop_here": "Relanzar",
                 "swap_drop_here": "Cambiar cara",
@@ -277,6 +278,11 @@
                         "reject": "Rechazar",
                         "executeNow": "Ejecutar ahora",
                         "restore": "Restaurar rechazados"
+                    },
+                    "context": {
+                        "reject": "Rechazar efecto",
+                        "execute": "Ejecutar efecto",
+                        "restore": "Restaurar efecto"
                     },
                     "status": {
                         "active": "Activo",
