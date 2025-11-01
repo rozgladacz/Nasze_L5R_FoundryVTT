@@ -208,4 +208,51 @@
             {{/if}}
         {{/if}}
     </section>
+    {{#if effectEntries.length}}
+        <section class="rnk-effects">
+            <header class="section-header">
+                <i class="fas fa-bolt"></i> {{ localize 'l5r5e.dice.roll_n_keep.effects.title' }}
+            </header>
+            <div class="effect-entries">
+                {{#each effectEntries as |entry|}}
+                    <div class="effect-entry {{entry.status}}" data-effect-key="{{entry.key}}">
+                        <div class="effect-entry-header">
+                            <span class="effect-entry-description">{{entry.description}}</span>
+                            <span class="effect-entry-values">
+                                <span class="effect-entry-base" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.baseLabel' }}">
+                                    {{entry.baseValue}}
+                                </span>
+                                {{#if ../isEditable}}
+                                    <span class="effect-entry-modifier" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.modifierLabel' }}">
+                                        <input type="number" class="effect-modifier" data-effect-key="{{entry.key}}" value="{{entry.modifier}}" step="1">
+                                    </span>
+                                {{else}}
+                                    {{#if entry.modifier}}
+                                        <span class="effect-entry-modifier-display" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.modifierLabel' }}">
+                                            {{entry.modifier}}
+                                        </span>
+                                    {{/if}}
+                                {{/if}}
+                                <span class="effect-entry-total" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.totalLabel' }}">
+                                    {{entry.totalValue}}
+                                </span>
+                            </span>
+                        </div>
+                        <div class="effect-entry-footer">
+                            <span class="effect-entry-status">
+                                {{#if (lookup ../effectStatusLabels entry.status)}}
+                                    {{ localize (lookup ../effectStatusLabels entry.status) }}
+                                {{else}}
+                                    {{entry.status}}
+                                {{/if}}
+                            </span>
+                            {{#if entry.details}}
+                                <span class="effect-entry-details">{{entry.details}}</span>
+                            {{/if}}
+                        </div>
+                    </div>
+                {{/each}}
+            </div>
+        </section>
+    {{/if}}
 </form>
