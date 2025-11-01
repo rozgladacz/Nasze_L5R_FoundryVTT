@@ -264,7 +264,27 @@
                 "fatigue_to_character_label": "Fatigue to character:",
                 "strife_to_target_label": "Strife to target:",
                 "fatigue_to_target_label": "Fatigue to target:",
-                "undo": "[GM] Undo the last step choices"
+                "undo": "[GM] Undo the last step choices",
+                "effects": {
+                    "title": "Roll Effects",
+                    "baseLabel": "Base",
+                    "modifierLabel": "Modifier",
+                    "totalLabel": "Result",
+                    "unknownLabel": "Effect",
+                    "menu": {
+                        "reject": "Reject",
+                        "executeNow": "Execute now",
+                        "restore": "Restore rejected"
+                    },
+                    "status": {
+                        "active": "Active",
+                        "inactive": "Inactive",
+                        "rejected": "Rejected",
+                        "triggered": "Triggered",
+                        "completed": "Completed"
+                    },
+                    "macroError": "An error occurred while executing an effect macro."
+                }
             }
         },
         "gm": {

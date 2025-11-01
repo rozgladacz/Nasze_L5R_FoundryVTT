@@ -264,7 +264,27 @@
                 "fatigue_to_character_label": "Fatiga al personaje:",
                 "strife_to_target_label": "Conflicto al objetivo:",
                 "fatigue_to_target_label": "Fatiga al objetivo:",
-                "undo": "[GM] Deshacer los últimos cambios"
+                "undo": "[GM] Deshacer los últimos cambios",
+                "effects": {
+                    "title": "Efectos de tirada",
+                    "baseLabel": "Base",
+                    "modifierLabel": "Modificador",
+                    "totalLabel": "Resultado",
+                    "unknownLabel": "Efecto",
+                    "menu": {
+                        "reject": "Rechazar",
+                        "executeNow": "Ejecutar ahora",
+                        "restore": "Restaurar rechazados"
+                    },
+                    "status": {
+                        "active": "Activo",
+                        "inactive": "Inactivo",
+                        "rejected": "Rechazado",
+                        "triggered": "Activado",
+                        "completed": "Completado"
+                    },
+                    "macroError": "Se produjo un error al ejecutar una macro de efecto."
+                }
             }
         },
         "gm": {

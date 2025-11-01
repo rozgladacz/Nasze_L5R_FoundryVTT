@@ -42,6 +42,19 @@ export class RollnKeepDialog extends FormApplication {
         rollEffects: [],
         effectResults: [],
         effectStates: {},
+        effectEntries: [],
+    };
+
+    /**
+     * Supported effect entry statuses.
+     * @enum {string}
+     */
+    static EFFECT_ENTRY_STATUS = {
+        active: "active",
+        inactive: "inactive",
+        rejected: "rejected",
+        triggered: "triggered",
+        completed: "completed",
     };
 
     /**
@@ -161,6 +174,7 @@ export class RollnKeepDialog extends FormApplication {
                 ? sourceRoll.l5r5e.effectStates
                 : {}
         );
+        this.object.effectEntries = [];
     }
 
     /**
@@ -217,6 +231,611 @@ export class RollnKeepDialog extends FormApplication {
 
         // Only unique for Skills
         this.object.swapDiceFaces.skills = [1, 3, 6, 8, 10, 11, 12];
+    }
+
+    /**
+     * Create a unique key for an effect entry based on the effect index and entry order.
+     * @param {number} effectIndex
+     * @param {number} order
+     * @returns {string}
+     * @private
+     */
+    _getEffectEntryKey(effectIndex, order) {
+        const normalizedIndex = Number.isFinite(effectIndex) ? Number(effectIndex) : 0;
+        const normalizedOrder = Number.isFinite(order) ? Number(order) : 0;
+        return `${normalizedIndex}:${normalizedOrder}`;
+    }
+
+    /**
+     * Resolve a macro identifier (id, name or UUID) to a Macro document.
+     * @param {string|null} identifier
+     * @returns {Promise<Macro|null>}
+     * @private
+     */
+    async _resolveMacro(identifier) {
+        if (!identifier || typeof identifier !== "string") {
+            return null;
+        }
+
+        const trimmed = identifier.trim();
+        if (!trimmed) {
+            return null;
+        }
+
+        const byId = game.macros?.get?.(trimmed) ?? null;
+        if (byId) {
+            return byId;
+        }
+
+        if (trimmed.startsWith("Compendium") || trimmed.includes(".")) {
+            try {
+                const document = await fromUuid(trimmed);
+                if (document instanceof Macro) {
+                    return document;
+                }
+            } catch (error) {
+                console.error(`Failed to resolve macro from UUID ${trimmed}`, error);
+            }
+        }
+
+        const byName = game.macros?.find?.((macro) => macro?.name === trimmed) ?? null;
+        if (byName) {
+            return byName;
+        }
+
+        return null;
+    }
+
+    /**
+     * Normalize a single effect entry definition returned by a macro.
+     * @param {number} effectIndex
+     * @param {unknown} entryData
+     * @param {number} entryIdx
+     * @param {object} effect
+     * @returns {object|null}
+     * @private
+     */
+    _normalizeEffectEntry(effectIndex, entryData, entryIdx, effect) {
+        if (entryData === undefined || entryData === null) {
+            return null;
+        }
+
+        const baseEntry = {
+            effectIndex: Number.isFinite(effectIndex) ? Number(effectIndex) : 0,
+            order: entryIdx,
+            description: "",
+            baseValue: 0,
+            modifier: 0,
+            priority: Number.isFinite(effect?.priority) ? Number(effect.priority) : 0,
+            status: RollnKeepDialog.EFFECT_ENTRY_STATUS.active,
+            finalMacro: null,
+            params: {},
+            details: null,
+        };
+
+        if (typeof entryData === "string") {
+            baseEntry.description = entryData;
+        } else if (Array.isArray(entryData)) {
+            baseEntry.description = entryData.join(" ");
+        } else if (typeof entryData === "object") {
+            const orderCandidate = Number(entryData.order ?? entryData.index ?? entryData.position);
+            if (Number.isFinite(orderCandidate)) {
+                baseEntry.order = Number(orderCandidate);
+            }
+
+            const priorityCandidate = Number(entryData.priority ?? entryData.weight);
+            if (Number.isFinite(priorityCandidate)) {
+                baseEntry.priority = Number(priorityCandidate);
+            }
+
+            const statusCandidate = entryData.status ?? entryData.state;
+            if (typeof statusCandidate === "string" && RollnKeepDialog.EFFECT_ENTRY_STATUS[statusCandidate]) {
+                baseEntry.status = statusCandidate;
+            }
+
+            const baseValueCandidate = Number(entryData.baseValue ?? entryData.base ?? entryData.value ?? entryData.amount);
+            if (Number.isFinite(baseValueCandidate)) {
+                baseEntry.baseValue = Number(baseValueCandidate);
+            }
+
+            const modifierCandidate = Number(entryData.modifier ?? entryData.adjustment ?? entryData.delta ?? 0);
+            if (Number.isFinite(modifierCandidate)) {
+                baseEntry.modifier = Number(modifierCandidate);
+            }
+
+            const paramsData = entryData.params ?? entryData.parameters ?? entryData.data ?? null;
+            if (paramsData && typeof paramsData === "object") {
+                baseEntry.params = foundry.utils.deepClone(paramsData);
+            }
+
+            const descriptionCandidate =
+                entryData.description ?? entryData.label ?? entryData.text ?? entryData.title ?? entryData.name ?? null;
+            if (typeof descriptionCandidate === "string") {
+                baseEntry.description = descriptionCandidate;
+            }
+
+            const detailsCandidate = entryData.details ?? entryData.note ?? entryData.tooltip ?? null;
+            if (detailsCandidate !== null && detailsCandidate !== undefined) {
+                baseEntry.details = detailsCandidate;
+            }
+
+            const macroCandidate =
+                entryData.finalMacro ?? entryData.executeMacro ?? entryData.execute ?? entryData.resultMacro ?? null;
+            if (typeof macroCandidate === "string" && macroCandidate.trim().length > 0) {
+                baseEntry.finalMacro = macroCandidate.trim();
+            } else if (typeof entryData.macro === "string" && entryData.macro.trim().length > 0) {
+                baseEntry.finalMacro = entryData.macro.trim();
+            }
+        }
+
+        baseEntry.order = Number.isFinite(baseEntry.order) ? Number(baseEntry.order) : entryIdx;
+        baseEntry.key = this._getEffectEntryKey(baseEntry.effectIndex, baseEntry.order);
+
+        if (!baseEntry.description) {
+            baseEntry.description = game.i18n.localize("l5r5e.dice.roll_n_keep.effects.unknownLabel");
+        }
+
+        return baseEntry;
+    }
+
+    /**
+     * Create a normalized effect entry from persisted results.
+     * @param {object} stored
+     * @returns {object}
+     * @private
+     */
+    _createEffectEntryFromStored(stored) {
+        const entry = foundry.utils.deepClone(stored ?? {});
+        entry.effectIndex = Number.isFinite(entry.effectIndex) ? Number(entry.effectIndex) : 0;
+        entry.order = Number.isFinite(entry.order) ? Number(entry.order) : 0;
+        entry.key = entry.key ?? this._getEffectEntryKey(entry.effectIndex, entry.order);
+        entry.description = entry.description ?? entry.label ?? "";
+        entry.baseValue = Number.isFinite(entry.baseValue)
+            ? Number(entry.baseValue)
+            : Number(entry.base ?? entry.value ?? 0) || 0;
+        entry.modifier = Number.isFinite(entry.modifier) ? Number(entry.modifier) : 0;
+        entry.priority = Number.isFinite(entry.priority) ? Number(entry.priority) : 0;
+        entry.status = RollnKeepDialog.EFFECT_ENTRY_STATUS[entry.status]
+            ? entry.status
+            : RollnKeepDialog.EFFECT_ENTRY_STATUS.active;
+        entry.finalMacro = typeof entry.finalMacro === "string" ? entry.finalMacro : null;
+        if (!entry.finalMacro && typeof entry.executeMacro === "string") {
+            entry.finalMacro = entry.executeMacro;
+        }
+        if (!entry.finalMacro && typeof entry.execute === "string") {
+            entry.finalMacro = entry.execute;
+        }
+        entry.params = entry.params && typeof entry.params === "object" ? entry.params : {};
+        entry.details = entry.details ?? entry.note ?? null;
+        this._updateEffectEntryTotals(entry);
+        return entry;
+    }
+
+    /**
+     * Update the cached total value for an effect entry.
+     * @param {object} entry
+     * @private
+     */
+    _updateEffectEntryTotals(entry) {
+        const base = Number.isFinite(entry.baseValue) ? Number(entry.baseValue) : 0;
+        const modifier = Number.isFinite(entry.modifier) ? Number(entry.modifier) : 0;
+        entry.totalValue = base + modifier;
+    }
+
+    /**
+     * Execute a roll effect input macro and normalize its result.
+     * @param {object} effect
+     * @param {number} effectIndex
+     * @returns {Promise<{entries: unknown[], state: object|null}>}
+     * @private
+     */
+    async _executeEffectInputMacro(effect, effectIndex) {
+        const macroIdentifier = effect?.macro ?? effect?.inputMacro ?? null;
+        if (!macroIdentifier || !this.roll) {
+            return { entries: [], state: null };
+        }
+
+        const macro = await this._resolveMacro(macroIdentifier);
+        if (!macro) {
+            console.warn(`RollnKeepDialog | Unable to resolve input macro '${macroIdentifier}' for effect index ${effectIndex}.`);
+            return { entries: [], state: null };
+        }
+
+        let macroResult;
+        try {
+            macroResult = await macro.execute(
+                this.roll,
+                foundry.utils.deepClone(effect?.params ?? {}),
+                foundry.utils.deepClone(this.object.effectStates ?? {}),
+                { effectIndex, effect, roll: this.roll }
+            );
+        } catch (error) {
+            console.error(`RollnKeepDialog | Error while executing macro '${macroIdentifier}'`, error);
+            ui.notifications?.error?.(game.i18n.localize("l5r5e.dice.roll_n_keep.effects.macroError"));
+            return { entries: [], state: null };
+        }
+
+        let entries = [];
+        let newState = null;
+
+        if (Array.isArray(macroResult)) {
+            entries = macroResult;
+        } else if (typeof macroResult === "string") {
+            entries = macroResult
+                .split(/\r?\n/g)
+                .map((line) => line.trim())
+                .filter((line) => line.length > 0);
+        } else if (macroResult && typeof macroResult === "object") {
+            if (Array.isArray(macroResult.entries)) {
+                entries = macroResult.entries;
+            } else if (Array.isArray(macroResult.lines)) {
+                entries = macroResult.lines;
+            } else if (Array.isArray(macroResult.results)) {
+                entries = macroResult.results;
+            } else if (macroResult.entry || macroResult.line) {
+                entries = [macroResult.entry ?? macroResult.line];
+            } else {
+                entries = [macroResult];
+            }
+
+            if (macroResult.state && typeof macroResult.state === "object") {
+                newState = macroResult.state;
+            }
+        }
+
+        return { entries, state: newState };
+    }
+
+    /**
+     * Prepare effect entries for rendering.
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _prepareEffectEntries() {
+        const existingEntries = Array.isArray(this.object.effectResults) ? this.object.effectResults : [];
+        const existingMap = new Map();
+        existingEntries.forEach((stored) => {
+            const entry = this._createEffectEntryFromStored(stored);
+            existingMap.set(entry.key, entry);
+        });
+
+        const updatedEntries = new Map();
+        const staleKeys = new Set(existingMap.keys());
+        let statesChanged = false;
+
+        const canGenerate = Boolean(this.roll) && (this.isOwner || game.user.isGM);
+        if (canGenerate && Array.isArray(this.object.rollEffects) && this.object.rollEffects.length > 0) {
+            for (let effectIndex = 0; effectIndex < this.object.rollEffects.length; effectIndex += 1) {
+                const effect = this.object.rollEffects[effectIndex];
+                const { entries: macroEntries, state: newState } = await this._executeEffectInputMacro(effect, effectIndex);
+
+                if (newState) {
+                    const beforeState = JSON.stringify(this.object.effectStates ?? {});
+                    this.object.effectStates = foundry.utils.mergeObject(this.object.effectStates ?? {}, newState, {
+                        inplace: false,
+                    });
+                    statesChanged = statesChanged || beforeState !== JSON.stringify(this.object.effectStates ?? {});
+                }
+
+                (macroEntries ?? []).forEach((macroEntry, entryIdx) => {
+                    const normalized = this._normalizeEffectEntry(effectIndex, macroEntry, entryIdx, effect);
+                    if (!normalized) {
+                        return;
+                    }
+
+                    const previous = existingMap.get(normalized.key);
+                    if (previous) {
+                        normalized.modifier = Number.isFinite(previous.modifier)
+                            ? Number(previous.modifier)
+                            : normalized.modifier;
+                        normalized.status = previous.status ?? normalized.status;
+                        normalized.priority = Number.isFinite(previous.priority)
+                            ? Number(previous.priority)
+                            : normalized.priority;
+                        normalized.finalMacro = previous.finalMacro ?? normalized.finalMacro;
+                        normalized.params = foundry.utils.mergeObject(previous.params ?? {}, normalized.params ?? {}, {
+                            inplace: false,
+                        });
+                        normalized.details = normalized.details ?? previous.details ?? null;
+                        normalized.isNew = false;
+                        staleKeys.delete(normalized.key);
+                    } else {
+                        normalized.isNew = true;
+                    }
+
+                    this._updateEffectEntryTotals(normalized);
+                    updatedEntries.set(normalized.key, normalized);
+                });
+            }
+        }
+
+        staleKeys.forEach((key) => {
+            const previous = existingMap.get(key);
+            if (!previous) {
+                return;
+            }
+            const clone = foundry.utils.deepClone(previous);
+            clone.isNew = false;
+            if (clone.status === RollnKeepDialog.EFFECT_ENTRY_STATUS.active) {
+                clone.status = RollnKeepDialog.EFFECT_ENTRY_STATUS.inactive;
+            }
+            this._updateEffectEntryTotals(clone);
+            updatedEntries.set(key, clone);
+        });
+
+        if (updatedEntries.size === 0 && existingMap.size > 0) {
+            existingMap.forEach((entry, key) => {
+                const clone = foundry.utils.deepClone(entry);
+                clone.isNew = false;
+                this._updateEffectEntryTotals(clone);
+                updatedEntries.set(key, clone);
+            });
+        }
+
+        const entries = Array.from(updatedEntries.values());
+        entries.sort((a, b) => {
+            const priorityDiff = (a.priority ?? 0) - (b.priority ?? 0);
+            if (priorityDiff !== 0) {
+                return priorityDiff;
+            }
+            const effectDiff = (a.effectIndex ?? 0) - (b.effectIndex ?? 0);
+            if (effectDiff !== 0) {
+                return effectDiff;
+            }
+            return (a.order ?? 0) - (b.order ?? 0);
+        });
+
+        this.object.effectEntries = entries;
+
+        const resultsChanged = this._persistEffectEntries();
+
+        if (statesChanged && this.roll?.l5r5e) {
+            this.roll.l5r5e.effectStates = foundry.utils.deepClone(this.object.effectStates ?? {});
+        }
+
+        if ((resultsChanged || statesChanged) && canGenerate) {
+            await this._toChatMessage();
+        }
+    }
+
+    /**
+     * Persist effect entries to the roll data structure.
+     * @returns {boolean} True if the serialized results changed.
+     * @private
+     */
+    _persistEffectEntries() {
+        const entries = Array.isArray(this.object.effectEntries) ? this.object.effectEntries : [];
+        const serialized = entries.map((entry) => ({
+            key: entry.key,
+            effectIndex: entry.effectIndex,
+            order: entry.order,
+            description: entry.description,
+            baseValue: entry.baseValue,
+            modifier: entry.modifier,
+            totalValue: entry.totalValue,
+            priority: entry.priority,
+            status: entry.status,
+            finalMacro: entry.finalMacro,
+            params: entry.params,
+            details: entry.details,
+        }));
+
+        const previous = JSON.stringify(this.object.effectResults ?? []);
+        const next = JSON.stringify(serialized);
+        const changed = previous !== next;
+
+        this.object.effectResults = serialized;
+
+        if (this.roll?.l5r5e) {
+            this.roll.l5r5e.effectResults = foundry.utils.deepClone(serialized);
+            this.roll.l5r5e.effectStates = foundry.utils.deepClone(this.object.effectStates ?? {});
+        }
+
+        return changed;
+    }
+
+    /**
+     * Locate an effect entry by its key.
+     * @param {string} effectKey
+     * @returns {object|null}
+     * @private
+     */
+    _findEffectEntry(effectKey) {
+        if (!effectKey || !Array.isArray(this.object.effectEntries)) {
+            return null;
+        }
+        return this.object.effectEntries.find((entry) => entry.key === effectKey) ?? null;
+    }
+
+    /**
+     * Update the modifier applied to an effect entry.
+     * @param {string} effectKey
+     * @param {number} modifier
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _setEffectModifier(effectKey, modifier) {
+        const entry = this._findEffectEntry(effectKey);
+        if (!entry) {
+            return;
+        }
+
+        const sanitized = Number.isNaN(Number(modifier)) ? 0 : Number(modifier);
+        entry.modifier = sanitized;
+        this._updateEffectEntryTotals(entry);
+
+        const changed = this._persistEffectEntries();
+        if (changed) {
+            await this._toChatMessage();
+        }
+
+        this.render(false);
+    }
+
+    /**
+     * Update the status of an effect entry and synchronize the roll.
+     * @param {string} effectKey
+     * @param {string} status
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _setEffectStatus(effectKey, status) {
+        if (!RollnKeepDialog.EFFECT_ENTRY_STATUS[status]) {
+            return;
+        }
+
+        const entry = this._findEffectEntry(effectKey);
+        if (!entry) {
+            return;
+        }
+
+        entry.status = status;
+        const changed = this._persistEffectEntries();
+        if (changed) {
+            await this._toChatMessage();
+        }
+
+        this.render(false);
+    }
+
+    /**
+     * Restore all rejected effect entries back to the active state.
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _restoreRejectedEffects() {
+        let hasChange = false;
+        (this.object.effectEntries ?? []).forEach((entry) => {
+            if (entry.status === RollnKeepDialog.EFFECT_ENTRY_STATUS.rejected) {
+                entry.status = RollnKeepDialog.EFFECT_ENTRY_STATUS.active;
+                hasChange = true;
+            }
+        });
+
+        if (!hasChange) {
+            return;
+        }
+
+        const changed = this._persistEffectEntries();
+        if (changed) {
+            await this._toChatMessage();
+        }
+
+        this.render(false);
+    }
+
+    /**
+     * Execute the final macro for a specific effect entry immediately.
+     * @param {string} effectKey
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _executeEffectEntryNow(effectKey) {
+        const entry = this._findEffectEntry(effectKey);
+        if (!entry) {
+            return;
+        }
+
+        entry.status = RollnKeepDialog.EFFECT_ENTRY_STATUS.triggered;
+        let changed = this._persistEffectEntries();
+        if (changed) {
+            await this._toChatMessage();
+        }
+
+        const executed = await this._executeEffectEntryMacro(entry);
+        if (executed) {
+            entry.status = RollnKeepDialog.EFFECT_ENTRY_STATUS.completed;
+        }
+
+        changed = this._persistEffectEntries();
+        if (changed) {
+            await this._toChatMessage();
+        }
+
+        this.render(false);
+    }
+
+    /**
+     * Execute the macro associated with an effect entry.
+     * @param {object} entry
+     * @returns {Promise<boolean>} True if the macro executed successfully.
+     * @private
+     */
+    async _executeEffectEntryMacro(entry) {
+        if (!entry?.finalMacro || !this.roll) {
+            return false;
+        }
+
+        const macro = await this._resolveMacro(entry.finalMacro);
+        if (!macro) {
+            console.warn(`RollnKeepDialog | Unable to resolve final macro '${entry.finalMacro}' for effect entry ${entry.key}.`);
+            return false;
+        }
+
+        const totalValue = Number.isFinite(entry.totalValue)
+            ? Number(entry.totalValue)
+            : Number(entry.baseValue ?? 0) + Number(entry.modifier ?? 0);
+
+        try {
+            await macro.execute(
+                this.roll,
+                totalValue,
+                foundry.utils.deepClone(entry.params ?? {}),
+                {
+                    effectIndex: entry.effectIndex,
+                    effectKey: entry.key,
+                    entry: foundry.utils.deepClone(entry),
+                    effect: this.object.rollEffects?.[entry.effectIndex] ?? null,
+                    effectStates: foundry.utils.deepClone(this.object.effectStates ?? {}),
+                }
+            );
+            return true;
+        } catch (error) {
+            console.error(`RollnKeepDialog | Error while executing final macro '${entry.finalMacro}'`, error);
+            ui.notifications?.error?.(game.i18n.localize("l5r5e.dice.roll_n_keep.effects.macroError"));
+            return false;
+        }
+    }
+
+    /**
+     * Execute all pending effect entries in priority order.
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _finalizeEffectEntries() {
+        const entries = (this.object.effectEntries ?? []).filter((entry) =>
+            [RollnKeepDialog.EFFECT_ENTRY_STATUS.active, RollnKeepDialog.EFFECT_ENTRY_STATUS.triggered].includes(entry.status)
+        );
+
+        entries.sort((a, b) => {
+            const priorityDiff = (a.priority ?? 0) - (b.priority ?? 0);
+            if (priorityDiff !== 0) {
+                return priorityDiff;
+            }
+            const effectDiff = (a.effectIndex ?? 0) - (b.effectIndex ?? 0);
+            if (effectDiff !== 0) {
+                return effectDiff;
+            }
+            return (a.order ?? 0) - (b.order ?? 0);
+        });
+
+        for (const entry of entries) {
+            entry.status = RollnKeepDialog.EFFECT_ENTRY_STATUS.triggered;
+            let changed = this._persistEffectEntries();
+            if (changed) {
+                await this._toChatMessage();
+            }
+
+            const executed = await this._executeEffectEntryMacro(entry);
+            if (executed) {
+                entry.status = RollnKeepDialog.EFFECT_ENTRY_STATUS.completed;
+            }
+
+            changed = this._persistEffectEntries();
+            if (changed) {
+                await this._toChatMessage();
+            }
+        }
     }
 
     /**
@@ -323,6 +942,8 @@ export class RollnKeepDialog extends FormApplication {
         const hasApplyOptions =
             canApplyStrifeToCharacter || canApplyFatigueToCharacter || canApplyStrifeToTarget || canApplyFatigueToTarget;
 
+        await this._prepareEffectEntries();
+
         rollData.hasAppliedResults =
             (rollData.strifeApplied || 0) > 0 ||
             (rollData.fatigueApplied || 0) > 0 ||
@@ -364,6 +985,10 @@ export class RollnKeepDialog extends FormApplication {
         }
 
         const isEditable = options?.editable ?? this.options.editable;
+        const effectStatusLabels = Object.values(RollnKeepDialog.EFFECT_ENTRY_STATUS).reduce((acc, statusKey) => {
+            acc[statusKey] = `l5r5e.dice.roll_n_keep.effects.status.${statusKey}`;
+            return acc;
+        }, {});
 
         return {
             ...(await super.getData(options)),
@@ -379,6 +1004,10 @@ export class RollnKeepDialog extends FormApplication {
             cssClass: this.options.classes.join(" "),
             data: this.object,
             l5r5e: rollData,
+            effectEntries: this.object.effectEntries ?? [],
+            effectStatuses: RollnKeepDialog.EFFECT_ENTRY_STATUS,
+            effectStatusLabels,
+            isEditable,
         };
     }
 
@@ -528,6 +1157,49 @@ export class RollnKeepDialog extends FormApplication {
         ["strifeApplied", "fatigueApplied", "targetStrifeApplied", "targetFatigueApplied"].forEach((field) =>
             registerValuePicker(field)
         );
+
+        // Effect entry modifier inputs
+        html.find(".effect-entry input.effect-modifier").on("change", (event) => {
+            event.preventDefault();
+            const target = event.currentTarget ?? event.target;
+            const effectKey = target?.dataset?.effectKey;
+            const value = Number(target?.value ?? 0);
+            target.value = Number.isNaN(value) ? 0 : value;
+            void this._setEffectModifier(effectKey, target.value);
+        });
+
+        if ((this.object.effectEntries ?? []).length > 0) {
+            new foundry.applications.ux.ContextMenu.implementation(
+                html[0],
+                ".effect-entry",
+                [
+                    {
+                        name: game.i18n.localize("l5r5e.dice.roll_n_keep.effects.menu.reject"),
+                        icon: '<i class="fas fa-ban"></i>',
+                        callback: (element) => {
+                            const key = element.dataset.effectKey;
+                            void this._setEffectStatus(key, RollnKeepDialog.EFFECT_ENTRY_STATUS.rejected);
+                        },
+                    },
+                    {
+                        name: game.i18n.localize("l5r5e.dice.roll_n_keep.effects.menu.executeNow"),
+                        icon: '<i class="fas fa-play"></i>',
+                        callback: (element) => {
+                            const key = element.dataset.effectKey;
+                            void this._executeEffectEntryNow(key);
+                        },
+                    },
+                    {
+                        name: game.i18n.localize("l5r5e.dice.roll_n_keep.effects.menu.restore"),
+                        icon: '<i class="fas fa-undo"></i>',
+                        callback: () => {
+                            void this._restoreRejectedEffects();
+                        },
+                    },
+                ],
+                { jQuery: false }
+            );
+        }
 
         const diceSelector = ".dice.draggable";
         html.find(diceSelector).on("click", this._onDiceKeep.bind(this));
@@ -1244,6 +1916,8 @@ export class RollnKeepDialog extends FormApplication {
                 (rollData.fatigueApplied || 0) > 0 ||
                 (rollData.targetStrifeApplied || 0) > 0 ||
                 (rollData.targetFatigueApplied || 0) > 0;
+
+            await this._finalizeEffectEntries();
 
             if (updated) {
                 await this._toChatMessage();

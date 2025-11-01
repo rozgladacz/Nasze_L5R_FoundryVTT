@@ -264,7 +264,27 @@
                 "fatigue_to_character_label": "Fatigue au personnage :",
                 "strife_to_target_label": "Conflit sur la cible :",
                 "fatigue_to_target_label": "Fatigue sur la cible :",
-                "undo": "[GM] Annuler les choix de la dernière étape"
+                "undo": "[GM] Annuler les choix de la dernière étape",
+                "effects": {
+                    "title": "Effets de jet",
+                    "baseLabel": "Base",
+                    "modifierLabel": "Modificateur",
+                    "totalLabel": "Résultat",
+                    "unknownLabel": "Effet",
+                    "menu": {
+                        "reject": "Rejeter",
+                        "executeNow": "Exécuter maintenant",
+                        "restore": "Restaurer les rejets"
+                    },
+                    "status": {
+                        "active": "Actif",
+                        "inactive": "Inactif",
+                        "rejected": "Rejeté",
+                        "triggered": "Déclenché",
+                        "completed": "Terminé"
+                    },
+                    "macroError": "Une erreur est survenue lors de l'exécution d'une macro d'effet."
+                }
             }
         },
         "gm": {
