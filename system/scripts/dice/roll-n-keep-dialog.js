@@ -1082,8 +1082,8 @@ export class RollnKeepDialog extends FormApplication {
     activateListeners(html) {
         super.activateListeners(html);
 
-        // GM Only, need to be before the editable check
-        if (game.user.isGM && this.object.currentStep > 0) {
+        // Owner only, need to be before the editable check
+        if (this.isOwner && this.object.currentStep > 0) {
             // Add Context menu to rollback choices
             new foundry.applications.ux.ContextMenu.implementation(html[0], ".l5r5e.profil", [
                 {
