@@ -333,6 +333,11 @@ export class RollnKeepDialog extends FormApplication {
             parameters: [],
         };
 
+        const entryDataKey =
+            typeof entryData === "object" && entryData !== null && typeof entryData.key === "string" && entryData.key.length > 0
+                ? entryData.key
+                : null;
+
         if (typeof entryData === "string") {
             baseEntry.description = entryData;
         } else if (Array.isArray(entryData)) {
@@ -441,6 +446,13 @@ export class RollnKeepDialog extends FormApplication {
             const entryModifierOverrides =
                 entryData.parameterModifiers ?? entryData.modifiers ?? entryData.adjustments ?? null;
 
+            const historyOrder = Number.isFinite(baseEntry.order)
+                ? Number(baseEntry.order)
+                : Number.isFinite(entryIdx)
+                    ? Number(entryIdx)
+                    : 0;
+            const entryKey = this._getEffectEntryKey(normalizedIndex, historyOrder);
+
             const effectValueOverrides =
                 this.object.effectParameterValues && typeof this.object.effectParameterValues === "object"
                     ? this.object.effectParameterValues[normalizedIndex]
@@ -450,22 +462,33 @@ export class RollnKeepDialog extends FormApplication {
                     ? this.object.effectParameterModifiers[normalizedIndex]
                     : null;
 
-            const combinedValues = this._mergeParameterMaps(effectValueOverrides, entryValueOverrides);
-            const combinedModifiers = this._mergeParameterMaps(effectModifierOverrides, entryModifierOverrides);
+            const storedEntryValues = this._collectParameterOverrides(this.object.effectParameterValues, [
+                entryDataKey,
+                entryKey,
+            ]);
+            const storedEntryModifiers = this._collectParameterOverrides(this.object.effectParameterModifiers, [
+                entryDataKey,
+                entryKey,
+            ]);
 
-            const historyOrder = Number.isFinite(baseEntry.order)
-                ? Number(baseEntry.order)
-                : Number.isFinite(entryIdx)
-                    ? Number(entryIdx)
-                    : 0;
+            let combinedValues = this._mergeParameterMaps(effectValueOverrides, storedEntryValues);
+            combinedValues = this._mergeParameterMaps(combinedValues, entryValueOverrides);
+            let combinedModifiers = this._mergeParameterMaps(effectModifierOverrides, storedEntryModifiers);
+            combinedModifiers = this._mergeParameterMaps(combinedModifiers, entryModifierOverrides);
+
+            const historyKeys = [];
+            if (entryDataKey) {
+                historyKeys.push(entryDataKey);
+            }
+            if (entryKey && !historyKeys.includes(entryKey)) {
+                historyKeys.push(entryKey);
+            }
+
             const historyContext = {
                 effectIndex: normalizedIndex,
                 entryOrder: historyOrder,
-                entryKey: this._getEffectEntryKey(normalizedIndex, historyOrder),
-                historyKeys:
-                    typeof entryData?.key === "string" && entryData.key.length > 0
-                        ? [entryData.key]
-                        : [],
+                entryKey,
+                historyKeys,
             };
 
             this._applyParameterValueOverrides(normalizedParameters, combinedValues, combinedModifiers, historyContext);
@@ -476,6 +499,13 @@ export class RollnKeepDialog extends FormApplication {
                 Array.isArray(effect?.parameterDefs) ? effect.parameterDefs : [],
                 { fallbackNamePrefix: fallbackPrefix }
             );
+            const historyOrder = Number.isFinite(baseEntry.order)
+                ? Number(baseEntry.order)
+                : Number.isFinite(entryIdx)
+                    ? Number(entryIdx)
+                    : 0;
+            const entryKey = this._getEffectEntryKey(normalizedIndex, historyOrder);
+
             const effectValueOverrides =
                 this.object.effectParameterValues && typeof this.object.effectParameterValues === "object"
                     ? this.object.effectParameterValues[normalizedIndex]
@@ -485,27 +515,34 @@ export class RollnKeepDialog extends FormApplication {
                     ? this.object.effectParameterModifiers[normalizedIndex]
                     : null;
 
-            const historyOrder = Number.isFinite(baseEntry.order)
-                ? Number(baseEntry.order)
-                : Number.isFinite(entryIdx)
-                    ? Number(entryIdx)
-                    : 0;
+            const storedEntryValues = this._collectParameterOverrides(this.object.effectParameterValues, [
+                entryDataKey,
+                entryKey,
+            ]);
+            const storedEntryModifiers = this._collectParameterOverrides(this.object.effectParameterModifiers, [
+                entryDataKey,
+                entryKey,
+            ]);
+
+            const combinedValues = this._mergeParameterMaps(effectValueOverrides, storedEntryValues);
+            const combinedModifiers = this._mergeParameterMaps(effectModifierOverrides, storedEntryModifiers);
+
+            const historyKeys = [];
+            if (entryDataKey) {
+                historyKeys.push(entryDataKey);
+            }
+            if (entryKey && !historyKeys.includes(entryKey)) {
+                historyKeys.push(entryKey);
+            }
+
             const historyContext = {
                 effectIndex: normalizedIndex,
                 entryOrder: historyOrder,
-                entryKey: this._getEffectEntryKey(normalizedIndex, historyOrder),
-                historyKeys:
-                    typeof entryData?.key === "string" && entryData.key.length > 0
-                        ? [entryData.key]
-                        : [],
+                entryKey,
+                historyKeys,
             };
 
-            this._applyParameterValueOverrides(
-                normalizedParameters,
-                effectValueOverrides,
-                effectModifierOverrides,
-                historyContext
-            );
+            this._applyParameterValueOverrides(normalizedParameters, combinedValues, combinedModifiers, historyContext);
             baseEntry.parameters = normalizedParameters;
         }
 
@@ -726,6 +763,47 @@ export class RollnKeepDialog extends FormApplication {
             return foundry.utils.deepClone(base);
         }
         return foundry.utils.mergeObject(foundry.utils.deepClone(base), override, { inplace: false });
+    }
+
+    _collectParameterOverrides(store, keys = []) {
+        if (!store || typeof store !== "object" || Array.isArray(store)) {
+            return {};
+        }
+
+        const sanitizedKeys = [];
+        keys.forEach((key) => {
+            if (key === undefined || key === null) {
+                return;
+            }
+            if (!sanitizedKeys.includes(key)) {
+                sanitizedKeys.push(key);
+            }
+        });
+
+        return sanitizedKeys.reduce((accumulator, key) => {
+            const candidateKeys = [];
+            candidateKeys.push(key);
+            if (typeof key === "number") {
+                candidateKeys.push(String(key));
+            } else if (typeof key === "string") {
+                const numericKey = Number(key);
+                if (Number.isFinite(numericKey)) {
+                    candidateKeys.push(numericKey);
+                }
+            }
+
+            candidateKeys.forEach((candidateKey) => {
+                if (candidateKey === undefined || candidateKey === null) {
+                    return;
+                }
+                const candidate = store[candidateKey];
+                if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) {
+                    accumulator = this._mergeParameterMaps(accumulator, candidate);
+                }
+            });
+
+            return accumulator;
+        }, {});
     }
 
     _applyParameterValueOverrides(parameters, valuesMap, modifiersMap, context = {}) {
