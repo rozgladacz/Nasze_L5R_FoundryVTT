@@ -57,9 +57,29 @@ export class TechniqueSheetL5r5e extends ItemSheetL5r5e {
         formData["system.skill"] = TechniqueSheetL5r5e.formatSkillList(
             TechniqueSheetL5r5e.translateSkillsList(formData["system.skill"].split(","), true)
         ).join(",");
-        formData["system.base_tn_modifiers"] = TechniqueSheetL5r5e.sanitizeBaseTNModifiers(
-            formData["system.base_tn_modifiers"]
+        const ringOrder = ["fire", "air", "water", "earth", "void"];
+        const baseTNEntries = Object.entries(formData).filter(([key]) =>
+            key.startsWith("system.base_tn_modifiers.")
         );
+        if (baseTNEntries.length > 0) {
+            const collectedModifiers = baseTNEntries.reduce((acc, [key, value]) => {
+                const ringKey = key.substring("system.base_tn_modifiers.".length);
+                acc[ringKey] = value;
+                delete formData[key];
+                return acc;
+            }, {});
+            formData["system.base_tn_modifiers"] = TechniqueSheetL5r5e.sanitizeBaseTNModifiers(
+                ringOrder.map((ring, index) => {
+                    const candidates = [collectedModifiers[ring], collectedModifiers[String(index)]];
+                    const candidate = candidates.find((entry) => entry !== undefined);
+                    return candidate;
+                })
+            );
+        } else {
+            formData["system.base_tn_modifiers"] = TechniqueSheetL5r5e.sanitizeBaseTNModifiers(
+                formData["system.base_tn_modifiers"]
+            );
+        }
 
         return super._updateObject(event, formData);
     }
