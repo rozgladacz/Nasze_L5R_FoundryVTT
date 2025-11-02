@@ -453,7 +453,22 @@ export class RollnKeepDialog extends FormApplication {
             const combinedValues = this._mergeParameterMaps(effectValueOverrides, entryValueOverrides);
             const combinedModifiers = this._mergeParameterMaps(effectModifierOverrides, entryModifierOverrides);
 
-            this._applyParameterValueOverrides(normalizedParameters, combinedValues, combinedModifiers);
+            const historyOrder = Number.isFinite(baseEntry.order)
+                ? Number(baseEntry.order)
+                : Number.isFinite(entryIdx)
+                    ? Number(entryIdx)
+                    : 0;
+            const historyContext = {
+                effectIndex: normalizedIndex,
+                entryOrder: historyOrder,
+                entryKey: this._getEffectEntryKey(normalizedIndex, historyOrder),
+                historyKeys:
+                    typeof entryData?.key === "string" && entryData.key.length > 0
+                        ? [entryData.key]
+                        : [],
+            };
+
+            this._applyParameterValueOverrides(normalizedParameters, combinedValues, combinedModifiers, historyContext);
 
             baseEntry.parameters = normalizedParameters;
         } else {
@@ -469,7 +484,28 @@ export class RollnKeepDialog extends FormApplication {
                 this.object.effectParameterModifiers && typeof this.object.effectParameterModifiers === "object"
                     ? this.object.effectParameterModifiers[normalizedIndex]
                     : null;
-            this._applyParameterValueOverrides(normalizedParameters, effectValueOverrides, effectModifierOverrides);
+
+            const historyOrder = Number.isFinite(baseEntry.order)
+                ? Number(baseEntry.order)
+                : Number.isFinite(entryIdx)
+                    ? Number(entryIdx)
+                    : 0;
+            const historyContext = {
+                effectIndex: normalizedIndex,
+                entryOrder: historyOrder,
+                entryKey: this._getEffectEntryKey(normalizedIndex, historyOrder),
+                historyKeys:
+                    typeof entryData?.key === "string" && entryData.key.length > 0
+                        ? [entryData.key]
+                        : [],
+            };
+
+            this._applyParameterValueOverrides(
+                normalizedParameters,
+                effectValueOverrides,
+                effectModifierOverrides,
+                historyContext
+            );
             baseEntry.parameters = normalizedParameters;
         }
 
@@ -692,7 +728,7 @@ export class RollnKeepDialog extends FormApplication {
         return foundry.utils.mergeObject(foundry.utils.deepClone(base), override, { inplace: false });
     }
 
-    _applyParameterValueOverrides(parameters, valuesMap, modifiersMap) {
+    _applyParameterValueOverrides(parameters, valuesMap, modifiersMap, context = {}) {
         if (!Array.isArray(parameters)) {
             return;
         }
@@ -700,12 +736,151 @@ export class RollnKeepDialog extends FormApplication {
         const values = valuesMap && typeof valuesMap === "object" && !Array.isArray(valuesMap) ? valuesMap : {};
         const modifiers = modifiersMap && typeof modifiersMap === "object" && !Array.isArray(modifiersMap) ? modifiersMap : {};
 
+        const definitionStore =
+            this.object?.effectParameterDefs && typeof this.object.effectParameterDefs === "object"
+                ? this.object.effectParameterDefs
+                : {};
+
+        const normalizedEffectIndex = Number.isFinite(context.effectIndex) ? Number(context.effectIndex) : null;
+        const normalizedEntryOrder = Number.isFinite(context.entryOrder) ? Number(context.entryOrder) : null;
+        const explicitEntryKey =
+            typeof context.entryKey === "string" && context.entryKey.length > 0 ? context.entryKey : null;
+
+        const historyKeys = [];
+
+        if (Array.isArray(context.historyKeys)) {
+            context.historyKeys.forEach((key) => {
+                if (key === undefined || key === null) {
+                    return;
+                }
+                if (typeof key === "string" && key.length > 0) {
+                    historyKeys.push(key);
+                } else if (Number.isFinite(key)) {
+                    historyKeys.push(Number(key));
+                    historyKeys.push(String(key));
+                }
+            });
+        }
+
+        if (explicitEntryKey) {
+            historyKeys.unshift(explicitEntryKey);
+        }
+
+        if (normalizedEffectIndex !== null && normalizedEntryOrder !== null) {
+            const derivedKey = this._getEffectEntryKey(normalizedEffectIndex, normalizedEntryOrder);
+            if (!historyKeys.includes(derivedKey)) {
+                historyKeys.push(derivedKey);
+            }
+        }
+
+        if (normalizedEffectIndex !== null) {
+            if (!historyKeys.includes(normalizedEffectIndex)) {
+                historyKeys.push(normalizedEffectIndex);
+            }
+            const stringIndex = String(normalizedEffectIndex);
+            if (!historyKeys.includes(stringIndex)) {
+                historyKeys.push(stringIndex);
+            }
+        }
+
+        let historicalDefinitions = null;
+        for (const candidateKey of historyKeys) {
+            if (candidateKey === undefined || candidateKey === null) {
+                continue;
+            }
+
+            let candidate = definitionStore[candidateKey];
+            if (candidate === undefined && typeof candidateKey === "number") {
+                candidate = definitionStore[String(candidateKey)];
+            }
+            if (candidate === undefined && typeof candidateKey === "string") {
+                const numericKey = Number(candidateKey);
+                if (Number.isFinite(numericKey)) {
+                    candidate = definitionStore[numericKey];
+                }
+            }
+
+            if (candidate !== undefined) {
+                historicalDefinitions = candidate;
+                break;
+            }
+        }
+
+        const findHistoricalDefinition = (defs, name, index) => {
+            if (!defs) {
+                return null;
+            }
+
+            if (Array.isArray(defs)) {
+                const byName = defs.find((entry) => entry?.name === name);
+                if (byName) {
+                    return byName;
+                }
+                return defs[index] ?? defs[String(index)] ?? null;
+            }
+
+            if (typeof defs === "object") {
+                if (Array.isArray(defs.parameters)) {
+                    return findHistoricalDefinition(defs.parameters, name, index);
+                }
+                if (defs[name] !== undefined) {
+                    return defs[name];
+                }
+                if (defs[index] !== undefined) {
+                    return defs[index];
+                }
+                if (defs[String(index)] !== undefined) {
+                    return defs[String(index)];
+                }
+            }
+
+            return null;
+        };
+
+        const numericTypes = ["number", "int", "integer", "float", "decimal"];
+
         parameters.forEach((parameter, index) => {
             if (!parameter) {
                 return;
             }
 
             const name = typeof parameter.name === "string" && parameter.name.length > 0 ? parameter.name : `param${index + 1}`;
+            const modifier =
+                modifiers[name] ??
+                modifiers[index] ??
+                modifiers[String(index)] ??
+                (Array.isArray(modifiers) ? modifiers[index] : undefined);
+            const historicalDefinition = findHistoricalDefinition(historicalDefinitions, name, index);
+            const parameterType =
+                typeof parameter.originalType === "string"
+                    ? parameter.originalType.toLowerCase()
+                    : typeof parameter.type === "string"
+                        ? parameter.type.toLowerCase()
+                        : "";
+            const isNumericParameter = numericTypes.includes(parameterType);
+
+            const previousDefault =
+                historicalDefinition && Number.isFinite(Number(historicalDefinition.defaultValue))
+                    ? Number(historicalDefinition.defaultValue)
+                    : null;
+            const currentDefault = Number.isFinite(Number(parameter.defaultValue))
+                ? Number(parameter.defaultValue)
+                : null;
+            const modifierNumeric = Number.isFinite(Number(modifier)) ? Number(modifier) : null;
+
+            if (
+                parameter.editable &&
+                isNumericParameter &&
+                modifierNumeric !== null &&
+                previousDefault !== null &&
+                currentDefault !== null &&
+                !Object.is(previousDefault, currentDefault)
+            ) {
+                const adjusted = currentDefault + modifierNumeric;
+                parameter.userValue = this._coerceParameterValue(parameter, adjusted, parameter.defaultValue);
+                return;
+            }
+
             const override =
                 values[name] ??
                 values[index] ??
@@ -716,11 +891,6 @@ export class RollnKeepDialog extends FormApplication {
                 return;
             }
 
-            const modifier =
-                modifiers[name] ??
-                modifiers[index] ??
-                modifiers[String(index)] ??
-                (Array.isArray(modifiers) ? modifiers[index] : undefined);
             if (modifier !== undefined && typeof parameter.defaultValue === "number") {
                 const numeric = Number(parameter.defaultValue) + Number(modifier);
                 parameter.userValue = this._coerceParameterValue(parameter, numeric, parameter.defaultValue);
@@ -1121,7 +1291,27 @@ export class RollnKeepDialog extends FormApplication {
 
         const valueOverrides = entry.parameterValues ?? entry.values ?? null;
         const modifierOverrides = entry.parameterModifiers ?? entry.modifiers ?? null;
-        this._applyParameterValueOverrides(normalizedParameters, valueOverrides, modifierOverrides);
+        const historyOrder = Number.isFinite(entry.order)
+            ? Number(entry.order)
+            : Number.isFinite(entry.index)
+                ? Number(entry.index)
+                : 0;
+        const historyContext = {
+            effectIndex: Number.isFinite(entry.effectIndex) ? Number(entry.effectIndex) : 0,
+            entryOrder: historyOrder,
+            entryKey:
+                typeof entry.key === "string" && entry.key.length > 0
+                    ? entry.key
+                    : this._getEffectEntryKey(
+                          Number.isFinite(entry.effectIndex) ? Number(entry.effectIndex) : 0,
+                          historyOrder
+                      ),
+            historyKeys:
+                typeof entry.key === "string" && entry.key.length > 0
+                    ? [entry.key]
+                    : [],
+        };
+        this._applyParameterValueOverrides(normalizedParameters, valueOverrides, modifierOverrides, historyContext);
 
         entry.parameters = normalizedParameters;
         this._recalculateEffectEntryParameterState(entry);
