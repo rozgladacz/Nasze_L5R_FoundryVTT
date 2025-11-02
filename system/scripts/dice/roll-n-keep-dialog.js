@@ -2282,13 +2282,24 @@ export class RollnKeepDialog extends FormApplication {
 
         delete current.newFace;
 
-        if (current.type !== data.dieType || current.face === data.face) {
+        let normalizedFace = data.face;
+        if (typeof normalizedFace === "string") {
+            const trimmedFace = normalizedFace.trim();
+            if (trimmedFace !== "") {
+                const numericFace = Number(trimmedFace);
+                normalizedFace = Number.isNaN(numericFace) ? trimmedFace : numericFace;
+            } else {
+                normalizedFace = trimmedFace;
+            }
+        }
+
+        if (current.type !== data.dieType || current.face === normalizedFace) {
             current.choice = RollnKeepDialog.CHOICES.nothing;
             this.render(false);
             return false;
         }
 
-        current.newFace = data.face;
+        current.newFace = normalizedFace;
         current.choice = RollnKeepDialog.CHOICES.swap;
         this._forceChoiceForDiceWithoutOne(RollnKeepDialog.CHOICES.keep);
 
