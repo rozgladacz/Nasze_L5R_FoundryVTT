@@ -1286,7 +1286,9 @@ export class RollnKeepDialog extends FormApplication {
 
         const entries = Array.from(updatedEntries.values());
         entries.sort((a, b) => {
-            const priorityDiff = (a.priority ?? 0) - (b.priority ?? 0);
+            const priorityA = Number.isFinite(a.priority) ? a.priority : Number.NEGATIVE_INFINITY;
+            const priorityB = Number.isFinite(b.priority) ? b.priority : Number.NEGATIVE_INFINITY;
+            const priorityDiff = priorityB - priorityA;
             if (priorityDiff !== 0) {
                 return priorityDiff;
             }
@@ -1626,7 +1628,9 @@ export class RollnKeepDialog extends FormApplication {
         );
 
         entries.sort((a, b) => {
-            const priorityDiff = (a.priority ?? 0) - (b.priority ?? 0);
+            const priorityA = Number.isFinite(a.priority) ? a.priority : Number.NEGATIVE_INFINITY;
+            const priorityB = Number.isFinite(b.priority) ? b.priority : Number.NEGATIVE_INFINITY;
+            const priorityDiff = priorityB - priorityA;
             if (priorityDiff !== 0) {
                 return priorityDiff;
             }
