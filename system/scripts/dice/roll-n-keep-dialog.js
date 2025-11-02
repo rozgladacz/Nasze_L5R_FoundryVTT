@@ -1427,10 +1427,15 @@ export class RollnKeepDialog extends FormApplication {
                     const previous = existingMap.get(normalized.key);
                     if (previous) {
                         normalized.status = previous.status ?? normalized.status;
-                        normalized.priority = Number.isFinite(previous.priority)
-                            ? Number(previous.priority)
-                            : normalized.priority;
-                        normalized.finalMacro = previous.finalMacro ?? normalized.finalMacro;
+                        const shouldReuseResolvedState =
+                            previous.status === RollnKeepDialog.EFFECT_ENTRY_STATUS.triggered ||
+                            previous.status === RollnKeepDialog.EFFECT_ENTRY_STATUS.completed;
+                        if (shouldReuseResolvedState && Number.isFinite(previous.priority)) {
+                            normalized.priority = Number(previous.priority);
+                        }
+                        if (shouldReuseResolvedState) {
+                            normalized.finalMacro = previous.finalMacro ?? normalized.finalMacro;
+                        }
                         normalized.params = foundry.utils.mergeObject(previous.params ?? {}, normalized.params ?? {}, {
                             inplace: false,
                         });
