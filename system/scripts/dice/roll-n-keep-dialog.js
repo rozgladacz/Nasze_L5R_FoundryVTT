@@ -573,9 +573,8 @@ export class RollnKeepDialog extends FormApplication {
             }
         }
 
-        if (["int", "integer"].includes(clone.type)) {
-            clone.type = "number";
-        }
+        clone.originalType = clone.type;
+
         if (["bool", "checkbox"].includes(clone.type)) {
             clone.type = "boolean";
         }
@@ -599,6 +598,7 @@ export class RollnKeepDialog extends FormApplication {
         clone.max = Number.isFinite(Number(maxCandidate)) ? Number(maxCandidate) : null;
         clone.step = Number.isFinite(Number(stepCandidate)) ? Number(stepCandidate) : null;
 
+        const normalizedType = typeof clone.type === "string" ? clone.type.toLowerCase() : "string";
         const optionsCandidate = clone.options ?? clone.choices ?? clone.values ?? clone.items ?? null;
         if (Array.isArray(optionsCandidate)) {
             clone.options = optionsCandidate
@@ -640,14 +640,15 @@ export class RollnKeepDialog extends FormApplication {
         if (editableCandidate !== undefined) {
             clone.editable = Boolean(editableCandidate);
         } else {
-            clone.editable = clone.type !== "info";
+            clone.editable = normalizedType !== "info";
         }
 
         const includeCandidate = clone.includeInTotal ?? clone.contributes ?? clone.addToTotal ?? clone.sum ?? clone.counts;
         if (includeCandidate !== undefined) {
             clone.includeInTotal = Boolean(includeCandidate);
         } else {
-            clone.includeInTotal = clone.type === "number";
+            const numericTypes = ["number", "int", "integer", "float", "decimal"];
+            clone.includeInTotal = numericTypes.includes(normalizedType);
         }
 
         const placeholderCandidate = clone.placeholder ?? clone.hint ?? null;
@@ -663,8 +664,9 @@ export class RollnKeepDialog extends FormApplication {
             clone.baseValue ??
             clone.startValue ??
             clone.value ??
-            (clone.type === "boolean" ? false : clone.type === "number" ? 0 : "");
-        clone.defaultValue = this._coerceParameterValue(clone, defaultCandidate, clone.type === "number" ? 0 : "");
+            (normalizedType === "boolean" || normalizedType === "bool" ? false : ["number", "int", "integer", "float", "decimal"].includes(normalizedType) ? 0 : "");
+        const numericFallback = ["number", "int", "integer", "float", "decimal"].includes(normalizedType) ? 0 : "";
+        clone.defaultValue = this._coerceParameterValue(clone, defaultCandidate, numericFallback);
 
         const initialCandidate = clone.initialValue ?? clone.startValue ?? clone.defaultValue;
         clone.initialValue = this._coerceParameterValue(clone, initialCandidate, clone.defaultValue);
@@ -727,7 +729,8 @@ export class RollnKeepDialog extends FormApplication {
     }
 
     _coerceParameterValue(parameter, value, fallback = null) {
-        const type = typeof parameter?.type === "string" ? parameter.type.toLowerCase() : "string";
+        const originalType = typeof parameter?.originalType === "string" ? parameter.originalType.toLowerCase() : null;
+        const type = originalType ?? (typeof parameter?.type === "string" ? parameter.type.toLowerCase() : "string");
         const multiple = Boolean(parameter?.multiple);
 
         if (multiple) {
@@ -744,7 +747,8 @@ export class RollnKeepDialog extends FormApplication {
             case "number":
             case "int":
             case "integer":
-            case "float": {
+            case "float":
+            case "decimal": {
                 const numeric = Number(value);
                 let sanitized;
                 if (Number.isFinite(numeric)) {
@@ -753,6 +757,10 @@ export class RollnKeepDialog extends FormApplication {
                     sanitized = Number(fallback);
                 } else {
                     sanitized = 0;
+                }
+
+                if (["int", "integer"].includes(type)) {
+                    sanitized = Math.round(sanitized);
                 }
 
                 if (Number.isFinite(Number(parameter?.min))) {
@@ -764,6 +772,7 @@ export class RollnKeepDialog extends FormApplication {
                 return sanitized;
             }
             case "boolean":
+            case "bool":
             case "checkbox": {
                 if (typeof value === "string") {
                     return ["1", "true", "on", "yes"].includes(value.toLowerCase());
@@ -864,7 +873,8 @@ export class RollnKeepDialog extends FormApplication {
             return "";
         }
 
-        const type = typeof parameter.type === "string" ? parameter.type.toLowerCase() : "string";
+        const originalType = typeof parameter.originalType === "string" ? parameter.originalType.toLowerCase() : null;
+        const type = originalType ?? (typeof parameter.type === "string" ? parameter.type.toLowerCase() : "string");
         const value = parameter.userValue;
 
         if (Array.isArray(parameter.options) && parameter.options.length > 0) {
@@ -883,8 +893,14 @@ export class RollnKeepDialog extends FormApplication {
 
         switch (type) {
             case "number":
+            case "int":
+            case "integer":
+            case "float":
+            case "decimal":
                 return Number.isFinite(Number(value)) ? Number(value) : 0;
             case "boolean":
+            case "bool":
+            case "checkbox":
                 return value ? game.i18n.localize("Yes") : game.i18n.localize("No");
             default:
                 if (Array.isArray(value)) {
@@ -900,17 +916,20 @@ export class RollnKeepDialog extends FormApplication {
         }
 
         const name = typeof parameter.name === "string" && parameter.name.length > 0 ? parameter.name : `param${(index ?? 0) + 1}`;
+        const typeNormalized = typeof parameter.type === "string" ? parameter.type.toLowerCase() : "string";
+        const numericTypes = ["number", "int", "integer", "float", "decimal"];
         const serialized = {
             name,
             label: parameter.label ?? name,
             type: parameter.type ?? "string",
+            originalType: parameter.originalType ?? null,
             description: parameter.description ?? "",
             defaultValue: foundry.utils.deepClone(parameter.defaultValue ?? null),
             userValue: foundry.utils.deepClone(parameter.userValue ?? null),
             initialValue: foundry.utils.deepClone(
                 parameter.initialValue !== undefined ? parameter.initialValue : parameter.defaultValue ?? null
             ),
-            includeInTotal: parameter.includeInTotal ?? (parameter.type === "number"),
+            includeInTotal: parameter.includeInTotal ?? numericTypes.includes(typeNormalized),
             editable: Boolean(parameter.editable),
             min: parameter.min ?? null,
             max: parameter.max ?? null,
@@ -919,6 +938,9 @@ export class RollnKeepDialog extends FormApplication {
             required: Boolean(parameter.required),
             placeholder: parameter.placeholder ?? null,
             options: Array.isArray(parameter.options) ? foundry.utils.deepClone(parameter.options) : [],
+            allowedValues: Array.isArray(parameter.allowedValues)
+                ? foundry.utils.deepClone(parameter.allowedValues)
+                : [],
             order: Number.isFinite(parameter.order) ? Number(parameter.order) : index ?? 0,
         };
 
@@ -929,35 +951,62 @@ export class RollnKeepDialog extends FormApplication {
         const clone = foundry.utils.deepClone(parameter ?? {});
         clone.name = typeof clone.name === "string" && clone.name.length > 0 ? clone.name : `param${index + 1}`;
         clone.order = Number.isFinite(clone.order) ? Number(clone.order) : index;
-        clone.displayValue = this._formatEffectParameterValue(clone);
 
-        if (Array.isArray(clone.options)) {
-            const currentValue = clone.userValue;
-            clone.options = clone.options.map((option) => {
-                if (!option) {
+        const selectSource = (() => {
+            const normalizedOptions = Array.isArray(clone.options) ? clone.options : [];
+            if (normalizedOptions.length > 0) {
+                return normalizedOptions;
+            }
+            return Array.isArray(clone.allowedValues) ? clone.allowedValues : [];
+        })();
+
+        const currentValue = clone.userValue;
+        clone.selectOptions = selectSource
+            .map((option) => {
+                if (option === undefined || option === null) {
                     return option;
                 }
+
+                if (typeof option === "object") {
                 const optClone = foundry.utils.deepClone(option);
-                const optionValue = optClone.value ?? optClone.id ?? optClone.key ?? optClone.name;
+                const optionValue = optClone.value ?? optClone.id ?? optClone.key ?? optClone.name ?? optClone.title;
+                const optionLabel = optClone.label ?? optClone.title ?? optClone.name ?? optionValue;
+                optClone.value = optionValue;
+                optClone.label = optionLabel !== undefined ? String(optionLabel) : "";
                 if (clone.multiple) {
                     const values = Array.isArray(currentValue) ? currentValue : [];
                     optClone.selected = values.includes(optionValue);
                 } else {
                     optClone.selected = currentValue === optionValue;
                 }
-                if (optClone.label === undefined && optionValue !== undefined) {
-                    optClone.label = String(optionValue);
-                }
                 return optClone;
-            });
-        } else {
-            clone.options = [];
-        }
+            }
 
-        clone.isBoolean = clone.type === "boolean";
-        clone.isNumber = clone.type === "number";
-        clone.hasOptions = Array.isArray(clone.options) && clone.options.length > 0;
+            const value = option;
+                const isSelected = clone.multiple
+                    ? Array.isArray(currentValue) && currentValue.includes(value)
+                    : currentValue === value;
+                return {
+                    value,
+                    label: String(value),
+                    selected: isSelected,
+                };
+            })
+            .filter((option) => option !== undefined && option !== null);
+
+        const normalizedType = (clone.originalType ?? clone.type ?? "").toLowerCase();
+        clone.isBoolean = ["boolean", "bool", "checkbox"].includes(normalizedType);
+        clone.isInteger = ["int", "integer"].includes(normalizedType);
+        clone.hasAllowedValues = Array.isArray(clone.selectOptions) && clone.selectOptions.length > 0;
         clone.isEditable = Boolean(clone.editable);
+        clone.min = Number.isFinite(Number(clone.min)) ? Number(clone.min) : null;
+        clone.max = Number.isFinite(Number(clone.max)) ? Number(clone.max) : null;
+        clone.hasMin = clone.min !== null;
+        clone.hasMax = clone.max !== null;
+        clone.multiple = Boolean(clone.multiple);
+        clone.step = Number.isFinite(Number(clone.step)) ? Number(clone.step) : null;
+        clone.options = clone.selectOptions;
+        clone.displayValue = this._formatEffectParameterValue(clone);
 
         return clone;
     }
@@ -1326,12 +1375,20 @@ export class RollnKeepDialog extends FormApplication {
                     if (JSON.stringify(defaultArray) !== JSON.stringify(userArray)) {
                         entryModifiers[name] = foundry.utils.deepClone(userArray);
                     }
-                } else if (parameter.editable && parameter.type === "boolean") {
-                    if (Boolean(userValue) !== Boolean(defaultValue)) {
-                        entryModifiers[name] = Boolean(userValue);
+                } else if (parameter.editable) {
+                    const typeNormalized =
+                        typeof parameter.originalType === "string"
+                            ? parameter.originalType.toLowerCase()
+                            : typeof parameter.type === "string"
+                                ? parameter.type.toLowerCase()
+                                : "";
+                    if (["boolean", "bool", "checkbox"].includes(typeNormalized)) {
+                        if (Boolean(userValue) !== Boolean(defaultValue)) {
+                            entryModifiers[name] = Boolean(userValue);
+                        }
+                    } else if (userValue !== defaultValue) {
+                        entryModifiers[name] = foundry.utils.deepClone(userValue);
                     }
-                } else if (parameter.editable && userValue !== defaultValue) {
-                    entryModifiers[name] = foundry.utils.deepClone(userValue);
                 }
             });
 
@@ -1980,11 +2037,17 @@ export class RollnKeepDialog extends FormApplication {
                 return;
             }
 
-            const input = html
-                .find(
-                    `.effect-entry[data-effect-key="${effectKey}"] .effect-parameter-input[data-parameter-index="${selectorIndex}"]`
-                )
+            let input = $(button)
+                .closest(`.effect-entry[data-effect-key="${effectKey}"]`)
+                .find(`.effect-parameter-input[data-parameter-index="${selectorIndex}"]`)
                 .first();
+            if (!input.length) {
+                input = html
+                    .find(
+                        `.effect-entry[data-effect-key="${effectKey}"] .effect-parameter-input[data-parameter-index="${selectorIndex}"]`
+                    )
+                    .first();
+            }
             if (!input.length) {
                 return;
             }
