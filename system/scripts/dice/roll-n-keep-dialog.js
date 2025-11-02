@@ -1261,19 +1261,21 @@ export class RollnKeepDialog extends FormApplication {
             }
         }
 
-        staleKeys.forEach((key) => {
-            const previous = existingMap.get(key);
-            if (!previous) {
-                return;
-            }
-            const clone = foundry.utils.deepClone(previous);
-            clone.isNew = false;
-            if (clone.status === RollnKeepDialog.EFFECT_ENTRY_STATUS.active) {
-                clone.status = RollnKeepDialog.EFFECT_ENTRY_STATUS.inactive;
-            }
-            this._recalculateEffectEntryParameterState(clone);
-            updatedEntries.set(key, clone);
-        });
+        if (canGenerate) {
+            staleKeys.forEach((key) => {
+                const previous = existingMap.get(key);
+                if (!previous) {
+                    return;
+                }
+                const clone = foundry.utils.deepClone(previous);
+                clone.isNew = false;
+                if (clone.status === RollnKeepDialog.EFFECT_ENTRY_STATUS.active) {
+                    clone.status = RollnKeepDialog.EFFECT_ENTRY_STATUS.inactive;
+                }
+                this._recalculateEffectEntryParameterState(clone);
+                updatedEntries.set(key, clone);
+            });
+        }
 
         if (updatedEntries.size === 0 && existingMap.size > 0) {
             existingMap.forEach((entry, key) => {
