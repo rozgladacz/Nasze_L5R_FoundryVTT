@@ -48,6 +48,9 @@ const DEFAULT_L5R5E_DATA = {
     rollEffects: [],
     effectResults: [],
     effectStates: {},
+    effectParameterDefs: {},
+    effectParameterValues: {},
+    effectParameterModifiers: {},
 };
 
 /**
@@ -85,6 +88,18 @@ export class RollL5r5e extends Roll {
         this.l5r5e.effectStates =
             this.l5r5e.effectStates && typeof this.l5r5e.effectStates === "object"
                 ? this.l5r5e.effectStates
+                : {};
+        this.l5r5e.effectParameterDefs =
+            this.l5r5e.effectParameterDefs && typeof this.l5r5e.effectParameterDefs === "object"
+                ? this.l5r5e.effectParameterDefs
+                : {};
+        this.l5r5e.effectParameterValues =
+            this.l5r5e.effectParameterValues && typeof this.l5r5e.effectParameterValues === "object"
+                ? this.l5r5e.effectParameterValues
+                : {};
+        this.l5r5e.effectParameterModifiers =
+            this.l5r5e.effectParameterModifiers && typeof this.l5r5e.effectParameterModifiers === "object"
+                ? this.l5r5e.effectParameterModifiers
                 : {};
 
         const dataActions =
@@ -454,6 +469,18 @@ export class RollL5r5e extends Roll {
         roll.l5r5e.effectStates =
             roll.l5r5e.effectStates && typeof roll.l5r5e.effectStates === "object"
                 ? roll.l5r5e.effectStates
+                : {};
+        roll.l5r5e.effectParameterDefs =
+            roll.l5r5e.effectParameterDefs && typeof roll.l5r5e.effectParameterDefs === "object"
+                ? roll.l5r5e.effectParameterDefs
+                : {};
+        roll.l5r5e.effectParameterValues =
+            roll.l5r5e.effectParameterValues && typeof roll.l5r5e.effectParameterValues === "object"
+                ? roll.l5r5e.effectParameterValues
+                : {};
+        roll.l5r5e.effectParameterModifiers =
+            roll.l5r5e.effectParameterModifiers && typeof roll.l5r5e.effectParameterModifiers === "object"
+                ? roll.l5r5e.effectParameterModifiers
                 : {};
 
         // Get real Actor object

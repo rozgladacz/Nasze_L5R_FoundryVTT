@@ -43,6 +43,9 @@ export class RollnKeepDialog extends FormApplication {
         effectResults: [],
         effectStates: {},
         effectEntries: [],
+        effectParameterDefs: {},
+        effectParameterValues: {},
+        effectParameterModifiers: {},
     };
 
     /**
@@ -174,6 +177,21 @@ export class RollnKeepDialog extends FormApplication {
                 ? sourceRoll.l5r5e.effectStates
                 : {}
         );
+        this.object.effectParameterDefs = foundry.utils.deepClone(
+            sourceRoll.l5r5e?.effectParameterDefs && typeof sourceRoll.l5r5e.effectParameterDefs === "object"
+                ? sourceRoll.l5r5e.effectParameterDefs
+                : {}
+        );
+        this.object.effectParameterValues = foundry.utils.deepClone(
+            sourceRoll.l5r5e?.effectParameterValues && typeof sourceRoll.l5r5e.effectParameterValues === "object"
+                ? sourceRoll.l5r5e.effectParameterValues
+                : {}
+        );
+        this.object.effectParameterModifiers = foundry.utils.deepClone(
+            sourceRoll.l5r5e?.effectParameterModifiers && typeof sourceRoll.l5r5e.effectParameterModifiers === "object"
+                ? sourceRoll.l5r5e.effectParameterModifiers
+                : {}
+        );
         this.object.effectEntries = [];
     }
 
@@ -300,18 +318,19 @@ export class RollnKeepDialog extends FormApplication {
             return null;
         }
 
+        const normalizedIndex = Number.isFinite(effectIndex) ? Number(effectIndex) : 0;
+        const fallbackPrefix = `effect${normalizedIndex + 1}`;
+
         const baseEntry = {
-            effectIndex: Number.isFinite(effectIndex) ? Number(effectIndex) : 0,
-            order: entryIdx,
+            effectIndex: normalizedIndex,
+            order: Number.isFinite(entryIdx) ? Number(entryIdx) : 0,
             description: "",
-            baseValue: 0,
-            modifier: 0,
-            hasValue: false,
             priority: Number.isFinite(effect?.priority) ? Number(effect.priority) : 0,
             status: RollnKeepDialog.EFFECT_ENTRY_STATUS.active,
             finalMacro: null,
             params: {},
             details: null,
+            parameters: [],
         };
 
         if (typeof entryData === "string") {
@@ -334,20 +353,8 @@ export class RollnKeepDialog extends FormApplication {
                 baseEntry.status = statusCandidate;
             }
 
-            const baseValueCandidate = Number(entryData.baseValue ?? entryData.base ?? entryData.value ?? entryData.amount);
-            if (Number.isFinite(baseValueCandidate)) {
-                baseEntry.baseValue = Number(baseValueCandidate);
-                baseEntry.hasValue = true;
-            }
-
-            const modifierCandidate = Number(entryData.modifier ?? entryData.adjustment ?? entryData.delta ?? 0);
-            if (Number.isFinite(modifierCandidate)) {
-                baseEntry.modifier = Number(modifierCandidate);
-                baseEntry.hasValue = true;
-            }
-
             const paramsData = entryData.params ?? entryData.parameters ?? entryData.data ?? null;
-            if (paramsData && typeof paramsData === "object") {
+            if (paramsData && typeof paramsData === "object" && !Array.isArray(paramsData)) {
                 baseEntry.params = foundry.utils.deepClone(paramsData);
             }
 
@@ -362,12 +369,6 @@ export class RollnKeepDialog extends FormApplication {
                 baseEntry.details = detailsCandidate;
             }
 
-            const hasValueCandidate =
-                entryData.hasValue ?? entryData.allowModifier ?? entryData.numeric ?? entryData.hasNumericValue;
-            if (hasValueCandidate !== undefined) {
-                baseEntry.hasValue = Boolean(hasValueCandidate);
-            }
-
             const macroCandidate =
                 entryData.finalMacro ?? entryData.executeMacro ?? entryData.execute ?? entryData.resultMacro ?? null;
             if (typeof macroCandidate === "string" && macroCandidate.trim().length > 0) {
@@ -375,6 +376,101 @@ export class RollnKeepDialog extends FormApplication {
             } else if (typeof entryData.macro === "string" && entryData.macro.trim().length > 0) {
                 baseEntry.finalMacro = entryData.macro.trim();
             }
+
+            const rawParameters = Array.isArray(entryData.parameters)
+                ? entryData.parameters
+                : Array.isArray(entryData.parameterDefs)
+                    ? entryData.parameterDefs
+                    : Array.isArray(entryData.inputs)
+                        ? entryData.inputs
+                        : Array.isArray(effect?.parameterDefs)
+                            ? effect.parameterDefs
+                            : [];
+
+            let normalizedParameters = this._normalizeEffectParameters(rawParameters, {
+                fallbackNamePrefix: fallbackPrefix,
+            });
+
+            const baseValueCandidate = Number(entryData.baseValue ?? entryData.base ?? entryData.value ?? entryData.amount);
+            const modifierCandidate = Number(entryData.modifier ?? entryData.adjustment ?? entryData.delta);
+            const hasLegacyNumeric =
+                Number.isFinite(baseValueCandidate) ||
+                Number.isFinite(modifierCandidate) ||
+                entryData.hasValue !== undefined;
+
+            if (normalizedParameters.length === 0 && hasLegacyNumeric) {
+                const baseParam = this._normalizeEffectParameter(
+                    {
+                        name: "base",
+                        label: game.i18n.localize("l5r5e.dice.roll_n_keep.effects.baseLabel"),
+                        type: "number",
+                        defaultValue: Number.isFinite(baseValueCandidate) ? Number(baseValueCandidate) : 0,
+                        userValue: Number.isFinite(baseValueCandidate) ? Number(baseValueCandidate) : 0,
+                        includeInTotal: true,
+                        editable: false,
+                    },
+                    normalizedParameters.length,
+                    { fallbackNamePrefix: fallbackPrefix }
+                );
+                if (baseParam) {
+                    normalizedParameters.push(baseParam);
+                }
+
+                if (Number.isFinite(modifierCandidate) || entryData.hasValue === true) {
+                    const modifierParam = this._normalizeEffectParameter(
+                        {
+                            name: "modifier",
+                            label: game.i18n.localize("l5r5e.dice.roll_n_keep.effects.modifierLabel"),
+                            type: "number",
+                            defaultValue: Number.isFinite(modifierCandidate) ? Number(modifierCandidate) : 0,
+                            userValue: Number.isFinite(modifierCandidate) ? Number(modifierCandidate) : 0,
+                            includeInTotal: true,
+                            editable: true,
+                        },
+                        normalizedParameters.length,
+                        { fallbackNamePrefix: fallbackPrefix }
+                    );
+                    if (modifierParam) {
+                        normalizedParameters.push(modifierParam);
+                    }
+                }
+            }
+
+            const entryValueOverrides =
+                entryData.parameterValues ?? entryData.values ?? entryData.userValues ?? entryData.inputs ?? null;
+            const entryModifierOverrides =
+                entryData.parameterModifiers ?? entryData.modifiers ?? entryData.adjustments ?? null;
+
+            const effectValueOverrides =
+                this.object.effectParameterValues && typeof this.object.effectParameterValues === "object"
+                    ? this.object.effectParameterValues[normalizedIndex]
+                    : null;
+            const effectModifierOverrides =
+                this.object.effectParameterModifiers && typeof this.object.effectParameterModifiers === "object"
+                    ? this.object.effectParameterModifiers[normalizedIndex]
+                    : null;
+
+            const combinedValues = this._mergeParameterMaps(effectValueOverrides, entryValueOverrides);
+            const combinedModifiers = this._mergeParameterMaps(effectModifierOverrides, entryModifierOverrides);
+
+            this._applyParameterValueOverrides(normalizedParameters, combinedValues, combinedModifiers);
+
+            baseEntry.parameters = normalizedParameters;
+        } else {
+            const normalizedParameters = this._normalizeEffectParameters(
+                Array.isArray(effect?.parameterDefs) ? effect.parameterDefs : [],
+                { fallbackNamePrefix: fallbackPrefix }
+            );
+            const effectValueOverrides =
+                this.object.effectParameterValues && typeof this.object.effectParameterValues === "object"
+                    ? this.object.effectParameterValues[normalizedIndex]
+                    : null;
+            const effectModifierOverrides =
+                this.object.effectParameterModifiers && typeof this.object.effectParameterModifiers === "object"
+                    ? this.object.effectParameterModifiers[normalizedIndex]
+                    : null;
+            this._applyParameterValueOverrides(normalizedParameters, effectValueOverrides, effectModifierOverrides);
+            baseEntry.parameters = normalizedParameters;
         }
 
         baseEntry.order = Number.isFinite(baseEntry.order) ? Number(baseEntry.order) : entryIdx;
@@ -384,7 +480,486 @@ export class RollnKeepDialog extends FormApplication {
             baseEntry.description = game.i18n.localize("l5r5e.dice.roll_n_keep.effects.unknownLabel");
         }
 
+        this._recalculateEffectEntryParameterState(baseEntry);
+
         return baseEntry;
+    }
+
+    _normalizeEffectParameters(rawParameters, { fallbackNamePrefix = "param" } = {}) {
+        if (!Array.isArray(rawParameters)) {
+            return [];
+        }
+
+        return rawParameters
+            .map((parameter, index) => this._normalizeEffectParameter(parameter, index, { fallbackNamePrefix }))
+            .filter((parameter) => parameter !== null)
+            .map((parameter, index) => ({
+                ...parameter,
+                order: Number.isFinite(parameter.order) ? Number(parameter.order) : index,
+            }));
+    }
+
+    _normalizeEffectParameter(parameterData, index, { fallbackNamePrefix = "param" } = {}) {
+        if (parameterData === undefined || parameterData === null) {
+            return null;
+        }
+
+        const fallbackName = `${fallbackNamePrefix}_${index + 1}`;
+
+        if (typeof parameterData === "string") {
+            const trimmed = parameterData.trim();
+            if (!trimmed) {
+                return null;
+            }
+            return {
+                name: trimmed,
+                label: trimmed,
+                type: "string",
+                description: "",
+                defaultValue: "",
+                userValue: "",
+                includeInTotal: false,
+                editable: false,
+                options: [],
+                multiple: false,
+                required: false,
+                order: index,
+            };
+        }
+
+        if (typeof parameterData === "number") {
+            if (Number.isNaN(parameterData)) {
+                return null;
+            }
+            const numericValue = Number(parameterData);
+            return {
+                name: fallbackName,
+                label: fallbackName,
+                type: "number",
+                description: "",
+                defaultValue: numericValue,
+                userValue: numericValue,
+                includeInTotal: true,
+                editable: false,
+                options: [],
+                multiple: false,
+                required: false,
+                order: index,
+            };
+        }
+
+        const clone = foundry.utils.deepClone(parameterData);
+        const nameCandidate =
+            typeof clone.name === "string"
+                ? clone.name
+                : typeof clone.key === "string"
+                    ? clone.key
+                    : typeof clone.id === "string"
+                        ? clone.id
+                        : typeof clone.slug === "string"
+                            ? clone.slug
+                            : null;
+        clone.name = nameCandidate && nameCandidate.length > 0 ? nameCandidate : fallbackName;
+
+        const typeCandidate = clone.type ?? clone.input ?? clone.inputType ?? clone.control ?? clone.kind;
+        clone.type = typeof typeCandidate === "string" ? typeCandidate.toLowerCase() : undefined;
+        if (!clone.type) {
+            if (typeof clone.defaultValue === "number" || typeof clone.value === "number") {
+                clone.type = "number";
+            } else if (typeof clone.defaultValue === "boolean" || typeof clone.value === "boolean") {
+                clone.type = "boolean";
+            } else {
+                clone.type = "string";
+            }
+        }
+
+        if (["int", "integer"].includes(clone.type)) {
+            clone.type = "number";
+        }
+        if (["bool", "checkbox"].includes(clone.type)) {
+            clone.type = "boolean";
+        }
+        if (["select", "choice", "dropdown"].includes(clone.type)) {
+            clone.type = "select";
+        }
+
+        const labelCandidate = clone.label ?? clone.title ?? clone.caption ?? clone.description ?? clone.name ?? fallbackName;
+        clone.label = typeof labelCandidate === "string" ? labelCandidate : fallbackName;
+
+        const descriptionCandidate = clone.description ?? clone.hint ?? clone.help ?? clone.tooltip ?? "";
+        clone.description = typeof descriptionCandidate === "string" ? descriptionCandidate : "";
+
+        clone.multiple = Boolean(clone.multiple ?? clone.allowMultiple ?? clone.multi ?? false);
+        clone.required = Boolean(clone.required ?? clone.mandatory ?? false);
+
+        const minCandidate = clone.min ?? clone.minimum ?? clone.minValue;
+        const maxCandidate = clone.max ?? clone.maximum ?? clone.maxValue;
+        const stepCandidate = clone.step ?? clone.increment ?? clone.stepSize;
+        clone.min = Number.isFinite(Number(minCandidate)) ? Number(minCandidate) : null;
+        clone.max = Number.isFinite(Number(maxCandidate)) ? Number(maxCandidate) : null;
+        clone.step = Number.isFinite(Number(stepCandidate)) ? Number(stepCandidate) : null;
+
+        const optionsCandidate = clone.options ?? clone.choices ?? clone.values ?? clone.items ?? null;
+        if (Array.isArray(optionsCandidate)) {
+            clone.options = optionsCandidate
+                .map((option) => {
+                    if (option === undefined || option === null) {
+                        return null;
+                    }
+                    if (typeof option === "object") {
+                        const optClone = foundry.utils.deepClone(option);
+                        const valueCandidate =
+                            optClone.value ?? optClone.id ?? optClone.key ?? optClone.slug ?? optClone.name ?? null;
+                        if (valueCandidate === null) {
+                            return null;
+                        }
+                        optClone.value = valueCandidate;
+                        if (optClone.label === undefined && optClone.name !== undefined) {
+                            optClone.label = optClone.name;
+                        }
+                        if (optClone.label === undefined && optClone.text !== undefined) {
+                            optClone.label = optClone.text;
+                        }
+                        if (optClone.label === undefined) {
+                            optClone.label = String(optClone.value);
+                        }
+                        return optClone;
+                    }
+                    return {
+                        value: option,
+                        label: String(option),
+                    };
+                })
+                .filter((option) => option !== null);
+        } else {
+            clone.options = [];
+        }
+
+        const editableCandidate =
+            clone.editable ?? clone.userEditable ?? clone.allowUserInput ?? clone.canEdit ?? clone.adjustable ?? clone.edit;
+        if (editableCandidate !== undefined) {
+            clone.editable = Boolean(editableCandidate);
+        } else {
+            clone.editable = clone.type !== "info";
+        }
+
+        const includeCandidate = clone.includeInTotal ?? clone.contributes ?? clone.addToTotal ?? clone.sum ?? clone.counts;
+        if (includeCandidate !== undefined) {
+            clone.includeInTotal = Boolean(includeCandidate);
+        } else {
+            clone.includeInTotal = clone.type === "number";
+        }
+
+        const placeholderCandidate = clone.placeholder ?? clone.hint ?? null;
+        if (placeholderCandidate !== null && placeholderCandidate !== undefined) {
+            clone.placeholder = placeholderCandidate;
+        }
+
+        const defaultCandidate =
+            clone.defaultValue ??
+            clone.default ??
+            clone.initial ??
+            clone.initialValue ??
+            clone.baseValue ??
+            clone.startValue ??
+            clone.value ??
+            (clone.type === "boolean" ? false : clone.type === "number" ? 0 : "");
+        clone.defaultValue = this._coerceParameterValue(clone, defaultCandidate, clone.type === "number" ? 0 : "");
+
+        const initialCandidate = clone.initialValue ?? clone.startValue ?? clone.defaultValue;
+        clone.initialValue = this._coerceParameterValue(clone, initialCandidate, clone.defaultValue);
+
+        const userCandidate = clone.userValue ?? clone.current ?? clone.value ?? clone.initialValue ?? clone.defaultValue;
+        clone.userValue = this._coerceParameterValue(clone, userCandidate, clone.defaultValue);
+
+        const orderCandidate = Number(clone.order ?? clone.position ?? clone.index);
+        clone.order = Number.isFinite(orderCandidate) ? Number(orderCandidate) : index;
+
+        return clone;
+    }
+
+    _mergeParameterMaps(baseMap, overrideMap) {
+        const base = baseMap && typeof baseMap === "object" && !Array.isArray(baseMap) ? baseMap : {};
+        const override = overrideMap && typeof overrideMap === "object" && !Array.isArray(overrideMap) ? overrideMap : {};
+        if (Object.keys(base).length === 0) {
+            return foundry.utils.deepClone(override);
+        }
+        if (Object.keys(override).length === 0) {
+            return foundry.utils.deepClone(base);
+        }
+        return foundry.utils.mergeObject(foundry.utils.deepClone(base), override, { inplace: false });
+    }
+
+    _applyParameterValueOverrides(parameters, valuesMap, modifiersMap) {
+        if (!Array.isArray(parameters)) {
+            return;
+        }
+
+        const values = valuesMap && typeof valuesMap === "object" && !Array.isArray(valuesMap) ? valuesMap : {};
+        const modifiers = modifiersMap && typeof modifiersMap === "object" && !Array.isArray(modifiersMap) ? modifiersMap : {};
+
+        parameters.forEach((parameter, index) => {
+            if (!parameter) {
+                return;
+            }
+
+            const name = typeof parameter.name === "string" && parameter.name.length > 0 ? parameter.name : `param${index + 1}`;
+            const override =
+                values[name] ??
+                values[index] ??
+                values[String(index)] ??
+                (Array.isArray(values) ? values[index] : undefined);
+            if (override !== undefined) {
+                parameter.userValue = this._coerceParameterValue(parameter, override, parameter.defaultValue);
+                return;
+            }
+
+            const modifier =
+                modifiers[name] ??
+                modifiers[index] ??
+                modifiers[String(index)] ??
+                (Array.isArray(modifiers) ? modifiers[index] : undefined);
+            if (modifier !== undefined && typeof parameter.defaultValue === "number") {
+                const numeric = Number(parameter.defaultValue) + Number(modifier);
+                parameter.userValue = this._coerceParameterValue(parameter, numeric, parameter.defaultValue);
+            }
+        });
+    }
+
+    _coerceParameterValue(parameter, value, fallback = null) {
+        const type = typeof parameter?.type === "string" ? parameter.type.toLowerCase() : "string";
+        const multiple = Boolean(parameter?.multiple);
+
+        if (multiple) {
+            const source =
+                value === undefined || value === null
+                    ? []
+                    : Array.isArray(value)
+                        ? value
+                        : [value];
+            return source.map((entry) => this._coerceParameterValue({ ...parameter, multiple: false }, entry, null));
+        }
+
+        switch (type) {
+            case "number":
+            case "int":
+            case "integer":
+            case "float": {
+                const numeric = Number(value);
+                let sanitized;
+                if (Number.isFinite(numeric)) {
+                    sanitized = numeric;
+                } else if (Number.isFinite(Number(fallback))) {
+                    sanitized = Number(fallback);
+                } else {
+                    sanitized = 0;
+                }
+
+                if (Number.isFinite(Number(parameter?.min))) {
+                    sanitized = Math.max(Number(parameter.min), sanitized);
+                }
+                if (Number.isFinite(Number(parameter?.max))) {
+                    sanitized = Math.min(Number(parameter.max), sanitized);
+                }
+                return sanitized;
+            }
+            case "boolean":
+            case "checkbox": {
+                if (typeof value === "string") {
+                    return ["1", "true", "on", "yes"].includes(value.toLowerCase());
+                }
+                if (value === undefined || value === null) {
+                    if (typeof fallback === "string") {
+                        return ["1", "true", "on", "yes"].includes(fallback.toLowerCase());
+                    }
+                    return Boolean(fallback);
+                }
+                return Boolean(value);
+            }
+            default: {
+                if (value === undefined || value === null) {
+                    return fallback ?? "";
+                }
+                return value;
+            }
+        }
+    }
+
+    _mergeEffectEntryParameters(previousParameters, currentParameters) {
+        if (!Array.isArray(currentParameters)) {
+            return [];
+        }
+
+        if (!Array.isArray(previousParameters)) {
+            return currentParameters.map((parameter) => foundry.utils.deepClone(parameter));
+        }
+
+        return currentParameters.map((parameter, index) => {
+            const clone = foundry.utils.deepClone(parameter);
+            const name = typeof clone.name === "string" && clone.name.length > 0 ? clone.name : null;
+            let previous = null;
+            if (name) {
+                previous =
+                    previousParameters.find(
+                        (candidate) => candidate && typeof candidate.name === "string" && candidate.name === name
+                    ) ?? null;
+            }
+            if (!previous && previousParameters.length > index) {
+                previous = previousParameters[index];
+            }
+            if (previous) {
+                const previousValue = previous.userValue ?? previous.value ?? previous.defaultValue;
+                clone.userValue = this._coerceParameterValue(clone, previousValue, clone.defaultValue);
+            }
+            return clone;
+        });
+    }
+
+    _recalculateEffectEntryParameterState(entry) {
+        if (!entry) {
+            return;
+        }
+
+        const parameters = Array.isArray(entry.parameters) ? entry.parameters : [];
+        const parameterMap = {};
+        let total = 0;
+        let hasEditable = false;
+
+        parameters.forEach((parameter, index) => {
+            if (!parameter) {
+                return;
+            }
+            parameter.order = Number.isFinite(parameter.order) ? Number(parameter.order) : index;
+            parameter.name = typeof parameter.name === "string" && parameter.name.length > 0 ? parameter.name : `param${index + 1}`;
+            parameter.userValue = this._coerceParameterValue(
+                parameter,
+                parameter.userValue ?? parameter.value ?? parameter.defaultValue,
+                parameter.defaultValue
+            );
+            parameterMap[parameter.name] = parameter.userValue;
+            if (parameter.includeInTotal !== false && typeof parameter.userValue === "number" && Number.isFinite(parameter.userValue)) {
+                total += parameter.userValue;
+            }
+            hasEditable = hasEditable || Boolean(parameter.editable);
+        });
+
+        entry.parameters = parameters;
+        entry.parameterMap = parameterMap;
+        entry.totalValue = total;
+        entry.hasEditableParameters = hasEditable;
+    }
+
+    _getEffectEntryParameterMap(entry) {
+        if (!entry) {
+            return {};
+        }
+        if (!entry.parameterMap) {
+            this._recalculateEffectEntryParameterState(entry);
+        }
+        return entry.parameterMap ?? {};
+    }
+
+    _formatEffectParameterValue(parameter) {
+        if (!parameter) {
+            return "";
+        }
+
+        const type = typeof parameter.type === "string" ? parameter.type.toLowerCase() : "string";
+        const value = parameter.userValue;
+
+        if (Array.isArray(parameter.options) && parameter.options.length > 0) {
+            if (parameter.multiple) {
+                const values = Array.isArray(value) ? value : [];
+                const labels = parameter.options
+                    .filter((option) => values.includes(option.value))
+                    .map((option) => option.label ?? option.value ?? "");
+                return labels.join(", ");
+            }
+            const selected = parameter.options.find((option) => option.value === value);
+            if (selected) {
+                return selected.label ?? selected.value ?? "";
+            }
+        }
+
+        switch (type) {
+            case "number":
+                return Number.isFinite(Number(value)) ? Number(value) : 0;
+            case "boolean":
+                return value ? game.i18n.localize("Yes") : game.i18n.localize("No");
+            default:
+                if (Array.isArray(value)) {
+                    return value.join(", ");
+                }
+                return value ?? "";
+        }
+    }
+
+    _serializeEffectParameter(parameter, index) {
+        if (!parameter) {
+            return null;
+        }
+
+        const name = typeof parameter.name === "string" && parameter.name.length > 0 ? parameter.name : `param${(index ?? 0) + 1}`;
+        const serialized = {
+            name,
+            label: parameter.label ?? name,
+            type: parameter.type ?? "string",
+            description: parameter.description ?? "",
+            defaultValue: foundry.utils.deepClone(parameter.defaultValue ?? null),
+            userValue: foundry.utils.deepClone(parameter.userValue ?? null),
+            initialValue: foundry.utils.deepClone(
+                parameter.initialValue !== undefined ? parameter.initialValue : parameter.defaultValue ?? null
+            ),
+            includeInTotal: parameter.includeInTotal ?? (parameter.type === "number"),
+            editable: Boolean(parameter.editable),
+            min: parameter.min ?? null,
+            max: parameter.max ?? null,
+            step: parameter.step ?? null,
+            multiple: Boolean(parameter.multiple),
+            required: Boolean(parameter.required),
+            placeholder: parameter.placeholder ?? null,
+            options: Array.isArray(parameter.options) ? foundry.utils.deepClone(parameter.options) : [],
+            order: Number.isFinite(parameter.order) ? Number(parameter.order) : index ?? 0,
+        };
+
+        return serialized;
+    }
+
+    _decorateEffectParameter(parameter, index) {
+        const clone = foundry.utils.deepClone(parameter ?? {});
+        clone.name = typeof clone.name === "string" && clone.name.length > 0 ? clone.name : `param${index + 1}`;
+        clone.order = Number.isFinite(clone.order) ? Number(clone.order) : index;
+        clone.displayValue = this._formatEffectParameterValue(clone);
+
+        if (Array.isArray(clone.options)) {
+            const currentValue = clone.userValue;
+            clone.options = clone.options.map((option) => {
+                if (!option) {
+                    return option;
+                }
+                const optClone = foundry.utils.deepClone(option);
+                const optionValue = optClone.value ?? optClone.id ?? optClone.key ?? optClone.name;
+                if (clone.multiple) {
+                    const values = Array.isArray(currentValue) ? currentValue : [];
+                    optClone.selected = values.includes(optionValue);
+                } else {
+                    optClone.selected = currentValue === optionValue;
+                }
+                if (optClone.label === undefined && optionValue !== undefined) {
+                    optClone.label = String(optionValue);
+                }
+                return optClone;
+            });
+        } else {
+            clone.options = [];
+        }
+
+        clone.isBoolean = clone.type === "boolean";
+        clone.isNumber = clone.type === "number";
+        clone.hasOptions = Array.isArray(clone.options) && clone.options.length > 0;
+        clone.isEditable = Boolean(clone.editable);
+
+        return clone;
     }
 
     /**
@@ -394,15 +969,38 @@ export class RollnKeepDialog extends FormApplication {
      * @private
      */
     _createEffectEntryFromStored(stored) {
+        if (stored === undefined || stored === null) {
+            return {
+                effectIndex: 0,
+                order: 0,
+                key: this._getEffectEntryKey(0, 0),
+                description: game.i18n.localize("l5r5e.dice.roll_n_keep.effects.unknownLabel"),
+                priority: 0,
+                status: RollnKeepDialog.EFFECT_ENTRY_STATUS.active,
+                finalMacro: null,
+                params: {},
+                details: null,
+                parameters: [],
+            };
+        }
+
+        if (typeof stored === "number") {
+            stored = { baseValue: stored };
+        }
+
+        if (typeof stored === "string") {
+            stored = { description: stored };
+        }
+
+        if (Array.isArray(stored)) {
+            stored = { parameters: stored };
+        }
+
         const entry = foundry.utils.deepClone(stored ?? {});
         entry.effectIndex = Number.isFinite(entry.effectIndex) ? Number(entry.effectIndex) : 0;
         entry.order = Number.isFinite(entry.order) ? Number(entry.order) : 0;
         entry.key = entry.key ?? this._getEffectEntryKey(entry.effectIndex, entry.order);
         entry.description = entry.description ?? entry.label ?? "";
-        entry.baseValue = Number.isFinite(entry.baseValue)
-            ? Number(entry.baseValue)
-            : Number(entry.base ?? entry.value ?? 0) || 0;
-        entry.modifier = Number.isFinite(entry.modifier) ? Number(entry.modifier) : 0;
         entry.priority = Number.isFinite(entry.priority) ? Number(entry.priority) : 0;
         entry.status = RollnKeepDialog.EFFECT_ENTRY_STATUS[entry.status]
             ? entry.status
@@ -414,29 +1012,76 @@ export class RollnKeepDialog extends FormApplication {
         if (!entry.finalMacro && typeof entry.execute === "string") {
             entry.finalMacro = entry.execute;
         }
-        entry.params = entry.params && typeof entry.params === "object" ? entry.params : {};
+        entry.params = entry.params && typeof entry.params === "object" && !Array.isArray(entry.params) ? entry.params : {};
         entry.details = entry.details ?? entry.note ?? null;
-        if (typeof stored.hasValue === "boolean") {
-            entry.hasValue = stored.hasValue;
-        } else if (typeof stored.allowModifier === "boolean") {
-            entry.hasValue = stored.allowModifier;
-        } else {
-            entry.hasValue = entry.baseValue !== 0 || entry.modifier !== 0;
-        }
-        this._updateEffectEntryTotals(entry);
-        return entry;
-    }
 
-    /**
-     * Update the cached total value for an effect entry.
-     * @param {object} entry
-     * @private
-     */
-    _updateEffectEntryTotals(entry) {
-        const base = Number.isFinite(entry.baseValue) ? Number(entry.baseValue) : 0;
-        const modifier = Number.isFinite(entry.modifier) ? Number(entry.modifier) : 0;
-        entry.totalValue = base + modifier;
-        entry.hasValue = Boolean(entry.hasValue);
+        const rawParameters = Array.isArray(entry.parameters)
+            ? entry.parameters
+            : Array.isArray(entry.parameterDefs)
+                ? entry.parameterDefs
+                : [];
+        const normalizedParameters = this._normalizeEffectParameters(rawParameters, {
+            fallbackNamePrefix: `effect${entry.effectIndex + 1}`,
+        });
+
+        const baseValueCandidate = Number(entry.baseValue ?? entry.base ?? entry.value ?? entry.amount);
+        const modifierCandidate = Number(entry.modifier ?? entry.adjustment ?? entry.delta);
+        const hasLegacyNumeric =
+            Number.isFinite(baseValueCandidate) ||
+            Number.isFinite(modifierCandidate) ||
+            entry.hasValue === true ||
+            entry.allowModifier === true;
+
+        if (normalizedParameters.length === 0 && hasLegacyNumeric) {
+            const baseParam = this._normalizeEffectParameter(
+                {
+                    name: "base",
+                    label: game.i18n.localize("l5r5e.dice.roll_n_keep.effects.baseLabel"),
+                    type: "number",
+                    defaultValue: Number.isFinite(baseValueCandidate) ? Number(baseValueCandidate) : 0,
+                    userValue: Number.isFinite(baseValueCandidate) ? Number(baseValueCandidate) : 0,
+                    includeInTotal: true,
+                    editable: false,
+                },
+                normalizedParameters.length,
+                { fallbackNamePrefix: `effect${entry.effectIndex + 1}` }
+            );
+            if (baseParam) {
+                normalizedParameters.push(baseParam);
+            }
+
+            if (Number.isFinite(modifierCandidate) || entry.hasValue === true || entry.allowModifier === true) {
+                const modifierParam = this._normalizeEffectParameter(
+                    {
+                        name: "modifier",
+                        label: game.i18n.localize("l5r5e.dice.roll_n_keep.effects.modifierLabel"),
+                        type: "number",
+                        defaultValue: Number.isFinite(modifierCandidate) ? Number(modifierCandidate) : 0,
+                        userValue: Number.isFinite(modifierCandidate) ? Number(modifierCandidate) : 0,
+                        includeInTotal: true,
+                        editable: true,
+                    },
+                    normalizedParameters.length,
+                    { fallbackNamePrefix: `effect${entry.effectIndex + 1}` }
+                );
+                if (modifierParam) {
+                    normalizedParameters.push(modifierParam);
+                }
+            }
+        }
+
+        const valueOverrides = entry.parameterValues ?? entry.values ?? null;
+        const modifierOverrides = entry.parameterModifiers ?? entry.modifiers ?? null;
+        this._applyParameterValueOverrides(normalizedParameters, valueOverrides, modifierOverrides);
+
+        entry.parameters = normalizedParameters;
+        this._recalculateEffectEntryParameterState(entry);
+
+        if (!entry.description) {
+            entry.description = game.i18n.localize("l5r5e.dice.roll_n_keep.effects.unknownLabel");
+        }
+
+        return entry;
     }
 
     /**
@@ -542,11 +1187,6 @@ export class RollnKeepDialog extends FormApplication {
 
                     const previous = existingMap.get(normalized.key);
                     if (previous) {
-                        normalized.modifier = Number.isFinite(previous.modifier)
-                            ? Number(previous.modifier)
-                            : normalized.modifier;
-                        normalized.hasValue =
-                            typeof previous.hasValue === "boolean" ? previous.hasValue : normalized.hasValue;
                         normalized.status = previous.status ?? normalized.status;
                         normalized.priority = Number.isFinite(previous.priority)
                             ? Number(previous.priority)
@@ -556,13 +1196,17 @@ export class RollnKeepDialog extends FormApplication {
                             inplace: false,
                         });
                         normalized.details = normalized.details ?? previous.details ?? null;
+                        normalized.parameters = this._mergeEffectEntryParameters(
+                            previous.parameters ?? [],
+                            normalized.parameters ?? []
+                        );
                         normalized.isNew = false;
                         staleKeys.delete(normalized.key);
                     } else {
                         normalized.isNew = true;
                     }
 
-                    this._updateEffectEntryTotals(normalized);
+                    this._recalculateEffectEntryParameterState(normalized);
                     updatedEntries.set(normalized.key, normalized);
                 });
             }
@@ -578,7 +1222,7 @@ export class RollnKeepDialog extends FormApplication {
             if (clone.status === RollnKeepDialog.EFFECT_ENTRY_STATUS.active) {
                 clone.status = RollnKeepDialog.EFFECT_ENTRY_STATUS.inactive;
             }
-            this._updateEffectEntryTotals(clone);
+            this._recalculateEffectEntryParameterState(clone);
             updatedEntries.set(key, clone);
         });
 
@@ -586,7 +1230,7 @@ export class RollnKeepDialog extends FormApplication {
             existingMap.forEach((entry, key) => {
                 const clone = foundry.utils.deepClone(entry);
                 clone.isNew = false;
-                this._updateEffectEntryTotals(clone);
+                this._recalculateEffectEntryParameterState(clone);
                 updatedEntries.set(key, clone);
             });
         }
@@ -629,15 +1273,15 @@ export class RollnKeepDialog extends FormApplication {
             effectIndex: entry.effectIndex,
             order: entry.order,
             description: entry.description,
-            baseValue: entry.baseValue,
-            modifier: entry.modifier,
-            totalValue: entry.totalValue,
             priority: entry.priority,
             status: entry.status,
             finalMacro: entry.finalMacro,
             params: entry.params,
             details: entry.details,
-            hasValue: entry.hasValue,
+            totalValue: entry.totalValue,
+            parameters: Array.isArray(entry.parameters)
+                ? entry.parameters.map((parameter, index) => this._serializeEffectParameter(parameter, index))
+                : [],
         }));
 
         const previous = JSON.stringify(this.object.effectResults ?? []);
@@ -646,9 +1290,66 @@ export class RollnKeepDialog extends FormApplication {
 
         this.object.effectResults = serialized;
 
+        const defs = {};
+        const values = {};
+        const modifiers = {};
+
+        entries.forEach((entry) => {
+            const entryParameters = Array.isArray(entry.parameters) ? entry.parameters : [];
+            if (entryParameters.length === 0) {
+                return;
+            }
+
+            defs[entry.key] = entryParameters.map((parameter, index) => this._serializeEffectParameter(parameter, index));
+            const parameterMap = this._getEffectEntryParameterMap(entry);
+            if (Object.keys(parameterMap).length > 0) {
+                values[entry.key] = foundry.utils.deepClone(parameterMap);
+            }
+
+            const entryModifiers = {};
+            entryParameters.forEach((parameter, index) => {
+                if (!parameter) {
+                    return;
+                }
+                const name = typeof parameter.name === "string" && parameter.name.length > 0 ? parameter.name : `param${index + 1}`;
+                const defaultValue = parameter.defaultValue ?? null;
+                const userValue = parameter.userValue;
+
+                if (typeof defaultValue === "number" && typeof userValue === "number") {
+                    const delta = userValue - Number(defaultValue);
+                    if (Math.abs(delta) > 0) {
+                        entryModifiers[name] = delta;
+                    }
+                } else if (parameter.editable && parameter.multiple) {
+                    const defaultArray = Array.isArray(defaultValue) ? defaultValue : [];
+                    const userArray = Array.isArray(userValue) ? userValue : [];
+                    if (JSON.stringify(defaultArray) !== JSON.stringify(userArray)) {
+                        entryModifiers[name] = foundry.utils.deepClone(userArray);
+                    }
+                } else if (parameter.editable && parameter.type === "boolean") {
+                    if (Boolean(userValue) !== Boolean(defaultValue)) {
+                        entryModifiers[name] = Boolean(userValue);
+                    }
+                } else if (parameter.editable && userValue !== defaultValue) {
+                    entryModifiers[name] = foundry.utils.deepClone(userValue);
+                }
+            });
+
+            if (Object.keys(entryModifiers).length > 0) {
+                modifiers[entry.key] = entryModifiers;
+            }
+        });
+
+        this.object.effectParameterDefs = defs;
+        this.object.effectParameterValues = values;
+        this.object.effectParameterModifiers = modifiers;
+
         if (this.roll?.l5r5e) {
             this.roll.l5r5e.effectResults = foundry.utils.deepClone(serialized);
             this.roll.l5r5e.effectStates = foundry.utils.deepClone(this.object.effectStates ?? {});
+            this.roll.l5r5e.effectParameterDefs = foundry.utils.deepClone(defs);
+            this.roll.l5r5e.effectParameterValues = foundry.utils.deepClone(values);
+            this.roll.l5r5e.effectParameterModifiers = foundry.utils.deepClone(modifiers);
         }
 
         return changed;
@@ -668,21 +1369,55 @@ export class RollnKeepDialog extends FormApplication {
     }
 
     /**
-     * Update the modifier applied to an effect entry.
+     * Locate a parameter within an effect entry.
+     * @param {object} entry
+     * @param {string|null} parameterName
+     * @param {number|null} parameterIndex
+     * @returns {object|null}
+     * @private
+     */
+    _findEffectEntryParameter(entry, parameterName, parameterIndex) {
+        if (!entry || !Array.isArray(entry.parameters)) {
+            return null;
+        }
+
+        if (typeof parameterName === "string" && parameterName.length > 0) {
+            const byName = entry.parameters.find((parameter) => parameter?.name === parameterName);
+            if (byName) {
+                return byName;
+            }
+        }
+
+        if (Number.isFinite(parameterIndex) && parameterIndex >= 0 && parameterIndex < entry.parameters.length) {
+            return entry.parameters[parameterIndex];
+        }
+
+        return null;
+    }
+
+    /**
+     * Update a parameter value applied to an effect entry.
      * @param {string} effectKey
-     * @param {number} modifier
+     * @param {string|null} parameterName
+     * @param {number|null} parameterIndex
+     * @param {unknown} value
      * @returns {Promise<void>}
      * @private
      */
-    async _setEffectModifier(effectKey, modifier) {
+    async _setEffectParameterValue(effectKey, parameterName, parameterIndex, value) {
         const entry = this._findEffectEntry(effectKey);
         if (!entry) {
             return;
         }
 
-        const sanitized = Number.isNaN(Number(modifier)) ? 0 : Number(modifier);
-        entry.modifier = sanitized;
-        this._updateEffectEntryTotals(entry);
+        const parameter = this._findEffectEntryParameter(entry, parameterName, parameterIndex);
+        if (!parameter || !parameter.editable) {
+            return;
+        }
+
+        const sanitized = this._coerceParameterValue(parameter, value, parameter.defaultValue);
+        parameter.userValue = sanitized;
+        this._recalculateEffectEntryParameterState(entry);
 
         const changed = this._persistEffectEntries();
         if (changed) {
@@ -792,14 +1527,18 @@ export class RollnKeepDialog extends FormApplication {
             return false;
         }
 
-        const totalValue = Number.isFinite(entry.totalValue)
-            ? Number(entry.totalValue)
-            : Number(entry.baseValue ?? 0) + Number(entry.modifier ?? 0);
+        const parameterMap = this._getEffectEntryParameterMap(entry);
+        const totalValue = Number.isFinite(entry.totalValue) ? Number(entry.totalValue) : 0;
+
+        const macroParameters = foundry.utils.deepClone(parameterMap);
+        if (!Object.prototype.hasOwnProperty.call(macroParameters, "_total")) {
+            macroParameters._total = totalValue;
+        }
 
         try {
             await macro.execute(
                 this.roll,
-                totalValue,
+                macroParameters,
                 foundry.utils.deepClone(entry.params ?? {}),
                 {
                     effectIndex: entry.effectIndex,
@@ -807,6 +1546,8 @@ export class RollnKeepDialog extends FormApplication {
                     entry: foundry.utils.deepClone(entry),
                     effect: this.object.rollEffects?.[entry.effectIndex] ?? null,
                     effectStates: foundry.utils.deepClone(this.object.effectStates ?? {}),
+                    parameterMap: foundry.utils.deepClone(parameterMap),
+                    totalValue,
                 }
             );
             return true;
@@ -1013,10 +1754,13 @@ export class RollnKeepDialog extends FormApplication {
         const effectEntries = Array.isArray(this.object.effectEntries) ? this.object.effectEntries : [];
         const decoratedEffectEntries = effectEntries.map((entry) => {
             const clone = foundry.utils.deepClone(entry);
-            clone.baseValue = Number.isFinite(clone.baseValue) ? Number(clone.baseValue) : 0;
-            clone.modifier = Number.isFinite(clone.modifier) ? Number(clone.modifier) : 0;
-            clone.totalValue = Number.isFinite(clone.totalValue) ? Number(clone.totalValue) : clone.baseValue + clone.modifier;
-            clone.hasValue = Boolean(clone.hasValue);
+            this._recalculateEffectEntryParameterState(clone);
+            clone.parameters = Array.isArray(clone.parameters)
+                ? clone.parameters.map((parameter, idx) => this._decorateEffectParameter(parameter, idx))
+                : [];
+            clone.parameterMap = this._getEffectEntryParameterMap(clone);
+            clone.totalValue = Number.isFinite(clone.totalValue) ? Number(clone.totalValue) : 0;
+            clone.hasParameters = clone.parameters.length > 0;
             clone.hasFinalMacro = typeof clone.finalMacro === "string" && clone.finalMacro.trim().length > 0;
             return clone;
         });
@@ -1193,17 +1937,33 @@ export class RollnKeepDialog extends FormApplication {
             registerValuePicker(field)
         );
 
-        // Effect entry modifier inputs
-        html.find(".effect-entry input.effect-modifier").on("change", (event) => {
+        // Effect entry parameter inputs
+        html.find(".effect-parameter-input").on("change", (event) => {
             event.preventDefault();
             const target = event.currentTarget ?? event.target;
             const effectKey = target?.dataset?.effectKey;
-            const value = Number(target?.value ?? 0);
-            target.value = Number.isNaN(value) ? 0 : value;
-            void this._setEffectModifier(effectKey, target.value);
+            const parameterName = target?.dataset?.parameterName ?? null;
+            const parameterIndexRaw = target?.dataset?.parameterIndex;
+            const parameterIndex = Number.isNaN(Number(parameterIndexRaw)) ? null : Number(parameterIndexRaw);
+            if (!effectKey) {
+                return;
+            }
+
+            let value;
+            if (target.type === "checkbox") {
+                value = target.checked;
+            } else if (target.multiple) {
+                value = Array.from(target.selectedOptions ?? []).map((option) => option.value);
+            } else if (target.dataset?.dtype === "Number") {
+                value = Number(target.value ?? 0);
+            } else {
+                value = target.value;
+            }
+
+            void this._setEffectParameterValue(effectKey, parameterName, parameterIndex, value);
         });
 
-        html.find(".effect-modifier-adjust").on("click", (event) => {
+        html.find(".effect-parameter-adjust").on("click", (event) => {
             event.preventDefault();
             const button = event.currentTarget ?? event.target;
             const effectKey = button?.dataset?.effectKey;
@@ -1211,18 +1971,31 @@ export class RollnKeepDialog extends FormApplication {
                 return;
             }
 
+            const parameterName = button?.dataset?.parameterName ?? null;
+            const parameterIndexRaw = button?.dataset?.parameterIndex;
+            const parameterIndex = Number.isNaN(Number(parameterIndexRaw)) ? null : Number(parameterIndexRaw);
+            const selectorIndex = parameterIndexRaw ?? "";
             const delta = Number(button?.dataset?.delta ?? 0);
             if (Number.isNaN(delta)) {
                 return;
             }
 
-            const input = html.find(`.effect-entry[data-effect-key="${effectKey}"] input.effect-modifier`).first();
+            const input = html
+                .find(
+                    `.effect-entry[data-effect-key="${effectKey}"] .effect-parameter-input[data-parameter-index="${selectorIndex}"]`
+                )
+                .first();
             if (!input.length) {
                 return;
             }
 
-            const current = Number(input.val()) || 0;
-            input.val(current + delta);
+            if (input.attr("type") === "checkbox") {
+                const current = input.prop("checked") ?? false;
+                input.prop("checked", !current);
+            } else {
+                const currentValue = Number(input.val()) || 0;
+                input.val(currentValue + delta);
+            }
             input.trigger("change");
         });
 
@@ -1771,6 +2544,9 @@ export class RollnKeepDialog extends FormApplication {
                     rollEffects: foundry.utils.deepClone(this.object.rollEffects),
                     effectResults: foundry.utils.deepClone(this.object.effectResults),
                     effectStates: foundry.utils.deepClone(this.object.effectStates),
+                    effectParameterDefs: foundry.utils.deepClone(this.object.effectParameterDefs ?? {}),
+                    effectParameterValues: foundry.utils.deepClone(this.object.effectParameterValues ?? {}),
+                    effectParameterModifiers: foundry.utils.deepClone(this.object.effectParameterModifiers ?? {}),
                 },
             }
         );
@@ -1888,6 +2664,9 @@ export class RollnKeepDialog extends FormApplication {
         roll.l5r5e.rollEffects = foundry.utils.deepClone(this.object.rollEffects);
         roll.l5r5e.effectResults = foundry.utils.deepClone(this.object.effectResults);
         roll.l5r5e.effectStates = foundry.utils.deepClone(this.object.effectStates);
+        roll.l5r5e.effectParameterDefs = foundry.utils.deepClone(this.object.effectParameterDefs ?? {});
+        roll.l5r5e.effectParameterValues = foundry.utils.deepClone(this.object.effectParameterValues ?? {});
+        roll.l5r5e.effectParameterModifiers = foundry.utils.deepClone(this.object.effectParameterModifiers ?? {});
 
         // Fill the data
         await roll.evaluate();
