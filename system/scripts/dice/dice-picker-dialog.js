@@ -24,6 +24,13 @@ function normalizeRollEffects(effects) {
             return [];
         }
 
+        const coerceBoolean = (value) => {
+            if (typeof value === "string") {
+                return ["1", "true", "on", "yes"].includes(value.trim().toLowerCase());
+            }
+            return Boolean(value);
+        };
+
         return rawParameters
             .map((param, index) => {
                 if (param === undefined || param === null) {
@@ -109,7 +116,7 @@ function normalizeRollEffects(effects) {
                         const numeric = Number(defaultCandidate);
                         clone.defaultValue = Number.isFinite(numeric) ? numeric : 0;
                     } else if (clone.type === "boolean") {
-                        clone.defaultValue = Boolean(defaultCandidate);
+                        clone.defaultValue = coerceBoolean(defaultCandidate);
                     } else {
                         clone.defaultValue =
                             defaultCandidate !== undefined && defaultCandidate !== null ? defaultCandidate : "";
@@ -121,11 +128,7 @@ function normalizeRollEffects(effects) {
                         const numeric = Number(userCandidate);
                         clone.userValue = Number.isFinite(numeric) ? numeric : clone.defaultValue;
                     } else if (clone.type === "boolean") {
-                        if (typeof userCandidate === "string") {
-                            clone.userValue = ["1", "true", "on", "yes"].includes(userCandidate.toLowerCase());
-                        } else {
-                            clone.userValue = Boolean(userCandidate);
-                        }
+                        clone.userValue = coerceBoolean(userCandidate);
                     } else {
                         clone.userValue = userCandidate ?? clone.defaultValue ?? "";
                     }
@@ -168,13 +171,15 @@ function normalizeRollEffects(effects) {
 
                     const editableCandidate =
                         clone.editable ?? clone.userEditable ?? clone.allowUserInput ?? clone.canEdit ?? clone.adjustable;
-                    clone.editable = editableCandidate !== undefined ? Boolean(editableCandidate) : clone.type !== "info";
+                    clone.editable =
+                        editableCandidate !== undefined ? coerceBoolean(editableCandidate) : clone.type !== "info";
 
                     const includeCandidate = clone.includeInTotal ?? clone.contributes ?? clone.addToTotal;
-                    clone.includeInTotal = includeCandidate !== undefined ? Boolean(includeCandidate) : clone.type === "number";
+                    clone.includeInTotal =
+                        includeCandidate !== undefined ? coerceBoolean(includeCandidate) : clone.type === "number";
 
-                    clone.multiple = Boolean(clone.multiple ?? clone.allowMultiple ?? false);
-                    clone.required = Boolean(clone.required ?? clone.mandatory ?? false);
+                    clone.multiple = coerceBoolean(clone.multiple ?? clone.allowMultiple ?? false);
+                    clone.required = coerceBoolean(clone.required ?? clone.mandatory ?? false);
 
                     const placeholderCandidate = clone.placeholder ?? clone.hint ?? null;
                     if (placeholderCandidate !== null && placeholderCandidate !== undefined) {
