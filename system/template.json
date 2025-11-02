@@ -248,7 +248,8 @@
             "templates": ["basics", "advancement"],
             "skill": "",
             "difficulty": "",
-            "technique_type": "kata"
+            "technique_type": "kata",
+            "base_tn_modifiers": [0, 0, 0, 0, 0]
         },
         "property": {
             "templates": ["basics"],

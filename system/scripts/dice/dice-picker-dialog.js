@@ -1,5 +1,7 @@
 import { defaultActionsState, getRollActionTypes, normalizeActions } from "./action-types.js";
 
+const RING_IDS = ["fire", "air", "water", "earth", "void"];
+
 function normalizeRollEffects(effects) {
     if (!effects) {
         return [];
@@ -331,6 +333,13 @@ export class DicePickerDialog extends FormApplication {
             modifier: 0,
             hidden: false,
             addVoidPoint: false,
+            baseModifiers: {
+                fire: 0,
+                air: 0,
+                water: 0,
+                earth: 0,
+                void: 0,
+            },
         },
         useVoidPoint: false,
         isInitiativeRoll: false,
@@ -357,6 +366,58 @@ export class DicePickerDialog extends FormApplication {
             difficulty: 2,
             difficultyHidden: false,
             rollEffects: [],
+        });
+    }
+
+    /**
+     * Normalize any supported representation of ring modifiers into a map keyed by ring id.
+     * @param {number[]|Record<string, number>|null|undefined} modifiers
+     * @returns {Record<string, number>}
+     */
+    static normalizeBaseTNModifiers(modifiers) {
+        const defaults = {};
+        RING_IDS.forEach((ring) => {
+            defaults[ring] = 0;
+        });
+
+        if (Array.isArray(modifiers)) {
+            return RING_IDS.reduce((acc, ring, index) => {
+                const value = Number(modifiers[index]);
+                acc[ring] = Number.isFinite(value) ? value : 0;
+                return acc;
+            }, defaults);
+        }
+
+        if (Number.isFinite(Number(modifiers))) {
+            const numeric = Number(modifiers);
+            return RING_IDS.reduce((acc, ring) => {
+                acc[ring] = numeric;
+                return acc;
+            }, defaults);
+        }
+
+        if (modifiers && typeof modifiers === "object") {
+            return RING_IDS.reduce((acc, ring, index) => {
+                const candidates = [modifiers[ring], modifiers[index], modifiers[String(index)]];
+                const numericCandidate = candidates.find((candidate) => Number.isFinite(Number(candidate)));
+                const value = Number(numericCandidate);
+                acc[ring] = Number.isFinite(value) ? value : 0;
+                return acc;
+            }, defaults);
+        }
+
+        return defaults;
+    }
+
+    /**
+     * Serialize the ring modifier map into an array ordered by Fire → Air → Water → Earth → Void.
+     * @param {Record<string, number>|null|undefined} modifiers
+     * @returns {number[]}
+     */
+    static serializeBaseTNModifiers(modifiers) {
+        return RING_IDS.map((ring) => {
+            const value = Number(modifiers?.[ring]);
+            return Number.isFinite(value) ? value : 0;
         });
     }
 
@@ -396,6 +457,7 @@ export class DicePickerDialog extends FormApplication {
      *   actorId           {string}        This is the `id` not the `uuid` of an actor. Ex : "AbYgKrNwWeAxa9jT"
      *   actorName         {string}        Careful this is case-sensitive. Ex : "Isawa Aki"
      *   difficulty        {number}        `1` to `9`
+     *   baseTNModifiers   {number[]|Object<string, number>} Optional ring-based TN modifiers applied before automatic adjustments (Fire → Air → Water → Earth → Void)
      *   difficultyHidden  {boolean}       If `true`, hide the difficulty and lock the view for the player.
      *   isInitiativeRoll  {boolean}       `true` if this is an initiative roll
      *   item              {Item}          The object of technique or weapon used for this roll.
@@ -410,6 +472,10 @@ export class DicePickerDialog extends FormApplication {
      */
     constructor(options = {}) {
         super({}, options);
+
+        const optionBaseTNModifiers =
+            options.baseTNModifiers ?? options.base_TN_modifiers ?? options.base_TN_modifier ?? null;
+        this.object.difficulty.baseModifiers = DicePickerDialog.normalizeBaseTNModifiers(optionBaseTNModifiers);
 
         // Try to get Actor from: options, first selected token or player's selected character
         [
@@ -504,6 +570,10 @@ export class DicePickerDialog extends FormApplication {
             this.item = fromUuidSync(options.itemUuid);
         }
 
+        if (optionBaseTNModifiers !== null && optionBaseTNModifiers !== undefined) {
+            this.baseTNModifiers = optionBaseTNModifiers;
+        }
+
         const actionDefaults = options.actions ?? options.actionTypes ?? options.actionTypeTags;
         this.object.actions = defaultActionsState(actionDefaults === undefined && !this.object.isInitiativeRoll );
         if (actionDefaults !== undefined) {
@@ -553,6 +623,9 @@ export class DicePickerDialog extends FormApplication {
             return;
         }
         this._item = item;
+        if (item?.system?.base_tn_modifiers !== undefined) {
+            this.baseTNModifiers = item.system.base_tn_modifiers;
+        }
     }
 
     /**
@@ -578,6 +651,25 @@ export class DicePickerDialog extends FormApplication {
 
     get actions() {
         return this.object.actions;
+    }
+
+    /**
+     * Set ring-based modifiers applied before automatic TN adjustments.
+     * @param {number[]|Record<string, number>} modifiers
+     */
+    set baseTNModifiers(modifiers) {
+        this.object.difficulty.baseModifiers = DicePickerDialog.normalizeBaseTNModifiers(modifiers);
+        this._recalculateDifficulty();
+    }
+
+    /**
+     * Get a clone of the current ring modifier map.
+     * @returns {Record<string, number>}
+     */
+    get baseTNModifiers() {
+        return foundry.utils.deepClone(
+            DicePickerDialog.normalizeBaseTNModifiers(this.object.difficulty.baseModifiers)
+        );
     }
 
     /**
@@ -675,15 +767,11 @@ export class DicePickerDialog extends FormApplication {
         if (this._difficultyHiddenIsLock.option) {
             return;
         }
-        difficulty = parseInt(difficulty);
-        if (isNaN(difficulty) || difficulty < 0) {
-            difficulty = 2;
-            if (this.object.isInitiativeRoll) {
-                difficulty = 1;
-            }
+        let parsed = Number(difficulty);
+        if (!Number.isFinite(parsed) || parsed < 0) {
+            parsed = this.object.isInitiativeRoll ? 1 : 2;
         }
-        this._baseDifficulty = difficulty;
-        this.object.difficulty.base = difficulty;
+        this._baseDifficulty = Math.max(Math.min(parsed, 9), 0);
         this._recalculateDifficulty();
     }
 
@@ -995,10 +1083,12 @@ export class DicePickerDialog extends FormApplication {
      */
     _quantityChange(element, add) {
         if (element === "difficulty") {
-            const currentBase = parseInt(this.object.difficulty.base);
-            const base = Number.isInteger(currentBase) ? currentBase : this._baseDifficulty;
-            this.object.difficulty.base = Math.max(Math.min(base + add, 9), 0);
-            this._baseDifficulty = this.object.difficulty.base;
+            const base = Number.isFinite(this._baseDifficulty)
+                ? this._baseDifficulty
+                : this.object.isInitiativeRoll
+                    ? 1
+                    : 2;
+            this._baseDifficulty = Math.max(Math.min(base + add, 9), 0);
             this._recalculateDifficulty();
             return;
         }
@@ -1010,10 +1100,20 @@ export class DicePickerDialog extends FormApplication {
      * @private
      */
     _recalculateDifficulty() {
-        const parsedBase = Number(this.object.difficulty.base);
-        const base = Math.max(Math.min(Number.isFinite(parsedBase) ? parsedBase : this._baseDifficulty, 9), 0);
+        const baseDifficulty = Number.isFinite(this._baseDifficulty)
+            ? this._baseDifficulty
+            : this.object.isInitiativeRoll
+                ? 1
+                : 2;
+        const sanitizedBase = Math.max(Math.min(baseDifficulty, 9), 0);
+        this._baseDifficulty = sanitizedBase;
+
+        const baseModifiers = DicePickerDialog.normalizeBaseTNModifiers(this.object.difficulty.baseModifiers);
+        this.object.difficulty.baseModifiers = baseModifiers;
+
+        const ringModifier = this._getRingBaseTNModifier(this.object?.ring?.id);
+        const base = Math.max(Math.min(sanitizedBase + ringModifier, 9), 0);
         this.object.difficulty.base = base;
-        this._baseDifficulty = base;
 
         const modifier = this._computeDifficultyModifier();
         this.object.difficulty.modifier = modifier;
@@ -1079,6 +1179,21 @@ export class DicePickerDialog extends FormApplication {
     }
 
     /**
+     * Get the modifier for the provided ring id from the base modifier map.
+     * @param {string|null|undefined} ringId
+     * @returns {number}
+     * @private
+     */
+    _getRingBaseTNModifier(ringId) {
+        if (!ringId || !RING_IDS.includes(ringId)) {
+            return 0;
+        }
+        const modifiers = this.object?.difficulty?.baseModifiers ?? {};
+        const value = Number(modifiers[ringId]);
+        return Number.isFinite(value) ? value : 0;
+    }
+
+    /**
      * Check whether any of the provided action types are currently selected.
      * @param {string[]} actions
      * @returns {boolean}
@@ -1133,6 +1248,8 @@ export class DicePickerDialog extends FormApplication {
         if (selectedActions.length > 0) {
             params.actions = selectedActions;
         }
+
+        params.baseTNModifiers = DicePickerDialog.serializeBaseTNModifiers(this.baseTNModifiers);
 
         const command = `new game.l5r5e.DicePickerDialog(${JSON.stringify(params)}).render(true);`;
 
