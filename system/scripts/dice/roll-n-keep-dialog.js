@@ -2995,6 +2995,24 @@ export class RollnKeepDialog extends FormApplication {
                 return e;
             });
 
+        // Restore any active effect entries to the inactive state so they can be re-applied.
+        let effectEntries = Array.isArray(this.object.effectEntries) ? this.object.effectEntries : [];
+        if (effectEntries.length === 0 && Array.isArray(this.object.effectResults) && this.object.effectResults.length > 0) {
+            effectEntries = this.object.effectResults.map((stored) => this._createEffectEntryFromStored(stored));
+            this.object.effectEntries = effectEntries;
+        }
+
+        effectEntries.forEach((entry) => {
+            if (!entry) {
+                return;
+            }
+            if (entry.status === RollnKeepDialog.EFFECT_ENTRY_STATUS.active) {
+                entry.status = RollnKeepDialog.EFFECT_ENTRY_STATUS.inactive;
+            }
+        });
+
+        this._persistEffectEntries();
+
         this.options.editable = this.isOwner;
         await this._rebuildRoll(true);
         await this._toChatMessage();
