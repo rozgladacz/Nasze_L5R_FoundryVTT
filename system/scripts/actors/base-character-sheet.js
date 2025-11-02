@@ -751,6 +751,7 @@ export class BaseCharacterSheetL5r5e extends BaseSheetL5r5e {
             ringId: itemData.ring || null,
             difficulty: itemData.difficulty || null,
             skillsList: itemData.skill || null,
+            baseTNModifiers: itemData.base_tn_modifiers || null,
             itemUuid: item.uuid,
         }).render(true);
     }

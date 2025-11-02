@@ -115,6 +115,7 @@ export class SocketHandlerL5r5e {
      *     skillList: 'melee,range,unarmed',
      *     difficulty: 3,
      *     difficultyHidden: true,
+     *     baseTNModifiers: [0, 0, 0, 1, 0],
      *   }
      * });
      *

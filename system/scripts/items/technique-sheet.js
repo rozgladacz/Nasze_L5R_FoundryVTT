@@ -29,6 +29,9 @@ export class TechniqueSheetL5r5e extends ItemSheetL5r5e {
             TechniqueSheetL5r5e.formatSkillList(sheetData.data.system.skill.split(",")),
             false
         ).join(", ");
+        sheetData.data.system.base_tn_modifiers = TechniqueSheetL5r5e.sanitizeBaseTNModifiers(
+            sheetData.data.system.base_tn_modifiers
+        );
 
         return sheetData;
     }
@@ -54,6 +57,9 @@ export class TechniqueSheetL5r5e extends ItemSheetL5r5e {
         formData["system.skill"] = TechniqueSheetL5r5e.formatSkillList(
             TechniqueSheetL5r5e.translateSkillsList(formData["system.skill"].split(","), true)
         ).join(",");
+        formData["system.base_tn_modifiers"] = TechniqueSheetL5r5e.sanitizeBaseTNModifiers(
+            formData["system.base_tn_modifiers"]
+        );
 
         return super._updateObject(event, formData);
     }
@@ -170,5 +176,33 @@ export class TechniqueSheetL5r5e extends ItemSheetL5r5e {
         });
 
         return [...unqCatList, ...unqSkillList];
+    }
+
+    /**
+     * Ensure the base TN modifiers array is present and contains five numeric entries.
+     * @param {number[]|object|null|undefined} modifiers
+     * @returns {number[]}
+     */
+    static sanitizeBaseTNModifiers(modifiers) {
+        const ringOrder = ["fire", "air", "water", "earth", "void"];
+        const defaults = [0, 0, 0, 0, 0];
+
+        if (Array.isArray(modifiers)) {
+            return defaults.map((fallback, index) => {
+                const value = Number(modifiers[index]);
+                return Number.isFinite(value) ? value : fallback;
+            });
+        }
+
+        if (modifiers && typeof modifiers === "object") {
+            return ringOrder.map((ring, index) => {
+                const candidates = [modifiers[index], modifiers[String(index)], modifiers[ring]];
+                const numeric = candidates.find((candidate) => Number.isFinite(Number(candidate)));
+                const value = Number(numeric);
+                return Number.isFinite(value) ? value : defaults[index];
+            });
+        }
+
+        return defaults;
     }
 }

@@ -42,6 +42,31 @@
                 {{localize 'l5r5e.dice.dicepicker.difficulty_title'}}
                 <input class="select-on-focus" type="text" name="system.difficulty" value="{{data.system.difficulty}}" data-dtype="String"/>
             </label>
+            <label class="attribute">
+                Base TN modifiers (Fire → Air → Water → Earth → Void)
+                <div class="ring-modifiers">
+                    <span class="ring-modifier">
+                        {{localize 'l5r5e.rings.fire'}}
+                        <input class="select-on-focus" type="number" name="system.base_tn_modifiers.0" value="{{lookup data.system.base_tn_modifiers 0}}" data-dtype="Number"/>
+                    </span>
+                    <span class="ring-modifier">
+                        {{localize 'l5r5e.rings.air'}}
+                        <input class="select-on-focus" type="number" name="system.base_tn_modifiers.1" value="{{lookup data.system.base_tn_modifiers 1}}" data-dtype="Number"/>
+                    </span>
+                    <span class="ring-modifier">
+                        {{localize 'l5r5e.rings.water'}}
+                        <input class="select-on-focus" type="number" name="system.base_tn_modifiers.2" value="{{lookup data.system.base_tn_modifiers 2}}" data-dtype="Number"/>
+                    </span>
+                    <span class="ring-modifier">
+                        {{localize 'l5r5e.rings.earth'}}
+                        <input class="select-on-focus" type="number" name="system.base_tn_modifiers.3" value="{{lookup data.system.base_tn_modifiers 3}}" data-dtype="Number"/>
+                    </span>
+                    <span class="ring-modifier">
+                        {{localize 'l5r5e.rings.void'}}
+                        <input class="select-on-focus" type="number" name="system.base_tn_modifiers.4" value="{{lookup data.system.base_tn_modifiers 4}}" data-dtype="Number"/>
+                    </span>
+                </div>
+            </label>
         </article>
         {{> 'systems/l5r5e/templates/items/item/item-infos.html'}}
     </section>
