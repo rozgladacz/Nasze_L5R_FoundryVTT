@@ -137,6 +137,22 @@ export class CombatL5r5e extends Combat {
                             ? messageOptions.effectStates
                             : {}
                     );
+                    roll.l5r5e.effectParameterDefs = foundry.utils.deepClone(
+                        messageOptions.effectParameterDefs && typeof messageOptions.effectParameterDefs === "object"
+                            ? messageOptions.effectParameterDefs
+                            : {}
+                    );
+                    roll.l5r5e.effectParameterValues = foundry.utils.deepClone(
+                        messageOptions.effectParameterValues && typeof messageOptions.effectParameterValues === "object"
+                            ? messageOptions.effectParameterValues
+                            : {}
+                    );
+                    roll.l5r5e.effectParameterModifiers = foundry.utils.deepClone(
+                        messageOptions.effectParameterModifiers &&
+                            typeof messageOptions.effectParameterModifiers === "object"
+                            ? messageOptions.effectParameterModifiers
+                            : {}
+                    );
 
                     await roll.roll();
                     rnkMessage = await roll.toMessage({ flavor });

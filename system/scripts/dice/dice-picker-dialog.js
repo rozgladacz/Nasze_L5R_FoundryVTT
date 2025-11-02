@@ -5,6 +5,195 @@ function normalizeRollEffects(effects) {
         return [];
     }
 
+    const sanitizeParameterValueMap = (values) => {
+        if (!values || typeof values !== "object" || Array.isArray(values)) {
+            return {};
+        }
+        return Object.entries(values).reduce((acc, [key, value]) => {
+            if (key) {
+                acc[key] = value;
+            }
+            return acc;
+        }, {});
+    };
+
+    const normalizeParameterDefs = (rawParameters) => {
+        if (!Array.isArray(rawParameters)) {
+            return [];
+        }
+
+        return rawParameters
+            .map((param, index) => {
+                if (param === undefined || param === null) {
+                    return null;
+                }
+
+                if (typeof param === "string") {
+                    const trimmed = param.trim();
+                    if (!trimmed) {
+                        return null;
+                    }
+                    return {
+                        name: trimmed,
+                        label: trimmed,
+                        type: "string",
+                        description: "",
+                        defaultValue: "",
+                        userValue: "",
+                        order: index,
+                    };
+                }
+
+                if (typeof param === "number") {
+                    const numeric = Number(param);
+                    if (Number.isNaN(numeric)) {
+                        return null;
+                    }
+                    return {
+                        name: `param${index + 1}`,
+                        label: `param${index + 1}`,
+                        type: "number",
+                        description: "",
+                        defaultValue: numeric,
+                        userValue: numeric,
+                        includeInTotal: true,
+                        order: index,
+                    };
+                }
+
+                if (typeof param === "object") {
+                    const clone = foundry.utils.deepClone(param);
+                    const nameCandidate =
+                        typeof clone.name === "string"
+                            ? clone.name
+                            : typeof clone.key === "string"
+                                ? clone.key
+                                : typeof clone.id === "string"
+                                    ? clone.id
+                                    : typeof clone.slug === "string"
+                                        ? clone.slug
+                                        : null;
+                    clone.name = nameCandidate && nameCandidate.length > 0 ? nameCandidate : `param${index + 1}`;
+
+                    const typeCandidate = clone.type ?? clone.input ?? clone.inputType ?? clone.control;
+                    if (typeof typeCandidate === "string") {
+                        clone.type = typeCandidate.toLowerCase();
+                    } else if (typeof clone.defaultValue === "number" || typeof clone.value === "number") {
+                        clone.type = "number";
+                    } else if (typeof clone.defaultValue === "boolean" || typeof clone.value === "boolean") {
+                        clone.type = "boolean";
+                    } else {
+                        clone.type = "string";
+                    }
+
+                    const labelCandidate =
+                        clone.label ?? clone.title ?? clone.caption ?? clone.description ?? clone.name ?? "";
+                    clone.label = typeof labelCandidate === "string" ? labelCandidate : clone.name;
+
+                    const descriptionCandidate =
+                        clone.description ?? clone.hint ?? clone.help ?? clone.tooltip ?? "";
+                    clone.description = typeof descriptionCandidate === "string" ? descriptionCandidate : "";
+
+                    const defaultCandidate =
+                        clone.defaultValue ??
+                        clone.default ??
+                        clone.initial ??
+                        clone.initialValue ??
+                        clone.baseValue ??
+                        clone.startValue ??
+                        clone.value;
+
+                    if (clone.type === "number") {
+                        const numeric = Number(defaultCandidate);
+                        clone.defaultValue = Number.isFinite(numeric) ? numeric : 0;
+                    } else if (clone.type === "boolean") {
+                        clone.defaultValue = Boolean(defaultCandidate);
+                    } else {
+                        clone.defaultValue =
+                            defaultCandidate !== undefined && defaultCandidate !== null ? defaultCandidate : "";
+                    }
+
+                    const userCandidate =
+                        clone.userValue ?? clone.current ?? clone.value ?? clone.initialValue ?? clone.defaultValue;
+                    if (clone.type === "number") {
+                        const numeric = Number(userCandidate);
+                        clone.userValue = Number.isFinite(numeric) ? numeric : clone.defaultValue;
+                    } else if (clone.type === "boolean") {
+                        if (typeof userCandidate === "string") {
+                            clone.userValue = ["1", "true", "on", "yes"].includes(userCandidate.toLowerCase());
+                        } else {
+                            clone.userValue = Boolean(userCandidate);
+                        }
+                    } else {
+                        clone.userValue = userCandidate ?? clone.defaultValue ?? "";
+                    }
+
+                    const minCandidate = clone.min ?? clone.minimum;
+                    const maxCandidate = clone.max ?? clone.maximum;
+                    const stepCandidate = clone.step ?? clone.increment;
+                    clone.min = Number.isFinite(Number(minCandidate)) ? Number(minCandidate) : null;
+                    clone.max = Number.isFinite(Number(maxCandidate)) ? Number(maxCandidate) : null;
+                    clone.step = Number.isFinite(Number(stepCandidate)) ? Number(stepCandidate) : null;
+
+                    const optionsCandidate = clone.options ?? clone.choices ?? clone.values ?? clone.items;
+                    if (Array.isArray(optionsCandidate)) {
+                        clone.options = optionsCandidate
+                            .map((option) => {
+                                if (option === undefined || option === null) {
+                                    return null;
+                                }
+                                if (typeof option === "object") {
+                                    const optClone = foundry.utils.deepClone(option);
+                                    if (optClone.value === undefined && optClone.id !== undefined) {
+                                        optClone.value = optClone.id;
+                                    }
+                                    if (optClone.label === undefined && optClone.name !== undefined) {
+                                        optClone.label = optClone.name;
+                                    }
+                                    return optClone;
+                                }
+                                return {
+                                    value: option,
+                                    label: String(option),
+                                };
+                            })
+                            .filter((option) => option !== null);
+                    }
+
+                    if (!Array.isArray(clone.options)) {
+                        clone.options = [];
+                    }
+
+                    const editableCandidate =
+                        clone.editable ?? clone.userEditable ?? clone.allowUserInput ?? clone.canEdit ?? clone.adjustable;
+                    clone.editable = editableCandidate !== undefined ? Boolean(editableCandidate) : clone.type !== "info";
+
+                    const includeCandidate = clone.includeInTotal ?? clone.contributes ?? clone.addToTotal;
+                    clone.includeInTotal = includeCandidate !== undefined ? Boolean(includeCandidate) : clone.type === "number";
+
+                    clone.multiple = Boolean(clone.multiple ?? clone.allowMultiple ?? false);
+                    clone.required = Boolean(clone.required ?? clone.mandatory ?? false);
+
+                    const placeholderCandidate = clone.placeholder ?? clone.hint ?? null;
+                    if (placeholderCandidate !== null && placeholderCandidate !== undefined) {
+                        clone.placeholder = placeholderCandidate;
+                    }
+
+                    const orderCandidate = Number(clone.order ?? clone.position ?? clone.index);
+                    clone.order = Number.isFinite(orderCandidate) ? orderCandidate : index;
+
+                    return clone;
+                }
+
+                return null;
+            })
+            .filter((param) => param !== null)
+            .map((param, idx) => ({
+                ...param,
+                order: Number.isFinite(param.order) ? Number(param.order) : idx,
+            }));
+    };
+
     const array = Array.isArray(effects) ? effects : [effects];
     const normalized = array
         .filter((effect) => effect !== undefined && effect !== null)
@@ -14,17 +203,47 @@ function normalizeRollEffects(effects) {
                     macro: effect,
                     params: {},
                     order: index,
+                    parameterDefs: [],
+                    parameterValues: {},
+                    parameterModifiers: {},
                 };
             }
 
             if (typeof effect === "object") {
                 const parsedOrder = Number(effect.order);
                 const order = Number.isFinite(parsedOrder) ? parsedOrder : index;
-                const params = effect.params ?? effect.parameters ?? {};
+
+                const rawParameters = Array.isArray(effect.parameterDefs)
+                    ? effect.parameterDefs
+                    : Array.isArray(effect.parameterDefinitions)
+                        ? effect.parameterDefinitions
+                        : Array.isArray(effect.parameters)
+                            ? effect.parameters
+                            : Array.isArray(effect.paramDefs)
+                                ? effect.paramDefs
+                                : null;
+
+                const paramsSource =
+                    rawParameters && typeof rawParameters === "object" && !Array.isArray(rawParameters)
+                        ? {}
+                        : effect.params ?? (Array.isArray(effect.parameters) ? null : effect.parameters) ?? {};
+
+                const parameterValuesSource =
+                    effect.parameterValues ?? effect.values ?? effect.userValues ?? effect.inputs ?? null;
+                const parameterModifiersSource =
+                    effect.parameterModifiers ?? effect.modifiers ?? effect.adjustments ?? null;
+
+                const params = paramsSource && typeof paramsSource === "object" && !Array.isArray(paramsSource)
+                    ? foundry.utils.deepClone(paramsSource)
+                    : {};
+
                 return {
                     macro: effect.macro ?? effect.name ?? null,
-                    params: params && typeof params === "object" ? params : {},
+                    params,
                     order,
+                    parameterDefs: normalizeParameterDefs(rawParameters ?? []),
+                    parameterValues: sanitizeParameterValueMap(parameterValuesSource),
+                    parameterModifiers: sanitizeParameterValueMap(parameterModifiersSource),
                 };
             }
 
@@ -32,10 +251,18 @@ function normalizeRollEffects(effects) {
                 macro: null,
                 params: {},
                 order: index,
+                parameterDefs: [],
+                parameterValues: {},
+                parameterModifiers: {},
             };
         });
 
-    return normalized.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    return normalized
+        .map((effect, idx) => ({
+            ...effect,
+            order: Number.isFinite(effect.order) ? Number(effect.order) : idx,
+        }))
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
 /**
@@ -109,6 +336,9 @@ export class DicePickerDialog extends FormApplication {
         isInitiativeRoll: false,
         actions: {},
         rollEffects: [],
+        effectParameterDefs: {},
+        effectParameterValues: {},
+        effectParameterModifiers: {},
     };
 
     /**
@@ -229,6 +459,29 @@ export class DicePickerDialog extends FormApplication {
         const rollEffects = normalizeRollEffects(options.rollEffects);
         this.object.rollEffects = rollEffects;
         this.options.rollEffects = foundry.utils.deepClone(rollEffects);
+        this.object.effectParameterDefs = rollEffects.reduce((acc, effect, index) => {
+            if (Array.isArray(effect.parameterDefs) && effect.parameterDefs.length > 0) {
+                acc[index] = foundry.utils.deepClone(effect.parameterDefs);
+            }
+            return acc;
+        }, {});
+        this.object.effectParameterValues = rollEffects.reduce((acc, effect, index) => {
+            const values = effect.parameterValues && typeof effect.parameterValues === "object" ? effect.parameterValues : null;
+            if (values && Object.keys(values).length > 0) {
+                acc[index] = foundry.utils.deepClone(values);
+            }
+            return acc;
+        }, {});
+        this.object.effectParameterModifiers = rollEffects.reduce((acc, effect, index) => {
+            const modifiers =
+                effect.parameterModifiers && typeof effect.parameterModifiers === "object"
+                    ? effect.parameterModifiers
+                    : null;
+            if (modifiers && Object.keys(modifiers).length > 0) {
+                acc[index] = foundry.utils.deepClone(modifiers);
+            }
+            return acc;
+        }, {});
 
         // Difficulty
         if (!options.difficulty || !this.parseDifficulty(options.difficulty)) {
@@ -684,6 +937,9 @@ export class DicePickerDialog extends FormApplication {
                 difficultyHidden: this.object.difficulty.hidden,
                 actions: foundry.utils.deepClone(this.object.actions),
                 rollEffects: foundry.utils.deepClone(this.object.rollEffects),
+                effectParameterDefs: foundry.utils.deepClone(this.object.effectParameterDefs ?? {}),
+                effectParameterValues: foundry.utils.deepClone(this.object.effectParameterValues ?? {}),
+                effectParameterModifiers: foundry.utils.deepClone(this.object.effectParameterModifiers ?? {}),
             };
 
             await this._actor.rollInitiative({
@@ -715,6 +971,9 @@ export class DicePickerDialog extends FormApplication {
             roll.l5r5e.rollEffects = foundry.utils.deepClone(this.object.rollEffects);
             roll.l5r5e.effectResults = [];
             roll.l5r5e.effectStates = {};
+            roll.l5r5e.effectParameterDefs = foundry.utils.deepClone(this.object.effectParameterDefs ?? {});
+            roll.l5r5e.effectParameterValues = foundry.utils.deepClone(this.object.effectParameterValues ?? {});
+            roll.l5r5e.effectParameterModifiers = foundry.utils.deepClone(this.object.effectParameterModifiers ?? {});
 
             await roll.roll();
             message = await roll.toMessage();

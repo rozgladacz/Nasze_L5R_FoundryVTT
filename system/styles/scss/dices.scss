@@ -699,25 +699,51 @@
                     gap: 0.5rem;
                     flex-wrap: wrap;
 
-                    .effect-entry-base,
                     .effect-entry-total {
                         min-width: 2.25rem;
                         text-align: center;
                         font-weight: 600;
                     }
 
-                    .effect-entry-modifier-picker {
-                        @extend %numeric-adjuster;
+                    .effect-entry-parameters {
+                        display: flex;
+                        flex-direction: column;
                         gap: 0.35rem;
 
-                        button {
-                            @extend %numeric-adjuster-button;
-                            padding: 0;
-                            line-height: 1.25rem;
-                        }
+                        .effect-parameter {
+                            display: flex;
+                            flex-direction: column;
+                            gap: 0.25rem;
 
-                        input.effect-modifier {
-                            width: 3rem;
+                            .effect-parameter-label {
+                                font-weight: 600;
+                            }
+
+                            .effect-parameter-control {
+                                display: flex;
+                                align-items: center;
+                                flex-wrap: wrap;
+                                gap: 0.35rem;
+                            }
+
+                            .effect-parameter-number-control {
+                                @extend %numeric-adjuster;
+                                gap: 0.35rem;
+
+                                button {
+                                    @extend %numeric-adjuster-button;
+                                    padding: 0;
+                                    line-height: 1.25rem;
+                                }
+
+                                input.effect-parameter-input {
+                                    width: 3rem;
+                                }
+                            }
+
+                            select.effect-parameter-input {
+                                min-width: 6rem;
+                            }
                         }
                     }
                 }

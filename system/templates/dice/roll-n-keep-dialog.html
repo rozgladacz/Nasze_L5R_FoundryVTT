@@ -213,7 +213,7 @@
                                 data-effect-key="{{entry.key}}"
                                 data-status="{{entry.status}}"
                                 data-priority="{{entry.priority}}"
-                                data-has-value="{{#if entry.hasValue}}true{{else}}false{{/if}}"
+                                data-has-parameters="{{#if entry.hasParameters}}true{{else}}false{{/if}}"
                                 data-has-final-macro="{{#if entry.hasFinalMacro}}true{{else}}false{{/if}}"
                                 data-total-value="{{entry.totalValue}}">
                                 <div class="effect-entry-main">
@@ -222,21 +222,46 @@
                                     </span>
                                     <span class="effect-entry-description">{{entry.description}}</span>
                                 </div>
-                                {{#if entry.hasValue}}
-                                    <div class="effect-entry-values apply-effect-values">
-                                        <span class="effect-entry-base" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.baseLabel' }}">
-                                            {{entry.baseValue}}
-                                        </span>
-                                        <div class="effect-entry-modifier-picker">
-                                            <button type="button" class="effect-modifier-adjust pointer-choice" data-effect-key="{{entry.key}}" data-delta="-1" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.modifierLabel' }}">-</button>
-                                            <input type="number" class="effect-modifier" data-effect-key="{{entry.key}}" value="{{entry.modifier}}" step="1">
-                                            <button type="button" class="effect-modifier-adjust pointer-choice" data-effect-key="{{entry.key}}" data-delta="1" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.modifierLabel' }}">+</button>
+                                <div class="effect-entry-values apply-effect-values">
+                                    {{#if entry.parameters.length}}
+                                        <div class="effect-entry-parameters">
+                                            {{#each entry.parameters as |parameter paramIdx|}}
+                                                <div class="effect-parameter" data-parameter-name="{{parameter.name}}" data-parameter-index="{{paramIdx}}">
+                                                    <label class="effect-parameter-label">{{parameter.label}}</label>
+                                                    <div class="effect-parameter-control">
+                                                        {{#if parameter.isEditable}}
+                                                            {{#if parameter.hasOptions}}
+                                                                <select class="effect-parameter-input" data-effect-key="{{../entry.key}}" data-parameter-name="{{parameter.name}}" data-parameter-index="{{paramIdx}}" {{#if parameter.multiple}}multiple{{/if}}>
+                                                                    {{#each parameter.options as |option|}}
+                                                                        <option value="{{option.value}}" {{#if option.selected}}selected{{/if}}>{{option.label}}</option>
+                                                                    {{/each}}
+                                                                </select>
+                                                            {{else if parameter.isBoolean}}
+                                                                <input type="checkbox" class="effect-parameter-input" data-effect-key="{{../entry.key}}" data-parameter-name="{{parameter.name}}" data-parameter-index="{{paramIdx}}" {{#if parameter.userValue}}checked{{/if}}>
+                                                            {{else if parameter.isNumber}}
+                                                                <div class="effect-parameter-number-control">
+                                                                    <button type="button" class="effect-parameter-adjust pointer-choice" data-effect-key="{{../entry.key}}" data-parameter-name="{{parameter.name}}" data-parameter-index="{{paramIdx}}" data-delta="-1" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.modifierLabel' }}">-</button>
+                                                                    <input type="number" class="effect-parameter-input" data-dtype="Number" data-effect-key="{{../entry.key}}" data-parameter-name="{{parameter.name}}" data-parameter-index="{{paramIdx}}" value="{{parameter.userValue}}" {{#if parameter.min}}min="{{parameter.min}}"{{/if}} {{#if parameter.max}}max="{{parameter.max}}"{{/if}} {{#if parameter.step}}step="{{parameter.step}}"{{/if}}>
+                                                                    <button type="button" class="effect-parameter-adjust pointer-choice" data-effect-key="{{../entry.key}}" data-parameter-name="{{parameter.name}}" data-parameter-index="{{paramIdx}}" data-delta="1" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.modifierLabel' }}">+</button>
+                                                                </div>
+                                                            {{else}}
+                                                                <input type="text" class="effect-parameter-input" data-effect-key="{{../entry.key}}" data-parameter-name="{{parameter.name}}" data-parameter-index="{{paramIdx}}" value="{{parameter.userValue}}" {{#if parameter.placeholder}}placeholder="{{parameter.placeholder}}"{{/if}}>
+                                                            {{/if}}
+                                                        {{else}}
+                                                            <span class="effect-parameter-value">{{parameter.displayValue}}</span>
+                                                        {{/if}}
+                                                    </div>
+                                                    {{#if parameter.description}}
+                                                        <div class="effect-parameter-description">{{parameter.description}}</div>
+                                                    {{/if}}
+                                                </div>
+                                            {{/each}}
                                         </div>
-                                        <span class="effect-entry-total" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.totalLabel' }}">
-                                            {{entry.totalValue}}
-                                        </span>
-                                    </div>
-                                {{/if}}
+                                    {{/if}}
+                                    <span class="effect-entry-total" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.totalLabel' }}">
+                                        {{entry.totalValue}}
+                                    </span>
+                                </div>
                                 {{#if entry.details}}
                                     <div class="effect-entry-details apply-effect-details">{{entry.details}}</div>
                                 {{/if}}
@@ -288,25 +313,21 @@
                         data-effect-key="{{entry.key}}"
                         data-status="{{entry.status}}"
                         data-priority="{{entry.priority}}"
-                        data-has-value="{{#if entry.hasValue}}true{{else}}false{{/if}}"
+                        data-has-parameters="{{#if entry.hasParameters}}true{{else}}false{{/if}}"
                         data-has-final-macro="{{#if entry.hasFinalMacro}}true{{else}}false{{/if}}"
                         data-total-value="{{entry.totalValue}}">
                         <div class="effect-entry-header">
                             <span class="effect-entry-description">{{entry.description}}</span>
                             <span class="effect-entry-values">
-                                <span class="effect-entry-base" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.baseLabel' }}">
-                                    {{entry.baseValue}}
-                                </span>
-                                {{#if ../isEditable}}
-                                    <span class="effect-entry-modifier" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.modifierLabel' }}">
-                                        <input type="number" class="effect-modifier" data-effect-key="{{entry.key}}" value="{{entry.modifier}}" step="1">
+                                {{#if entry.parameters.length}}
+                                    <span class="effect-entry-parameters">
+                                        {{#each entry.parameters as |parameter|}}
+                                            <span class="effect-parameter" data-parameter-name="{{parameter.name}}">
+                                                <span class="effect-parameter-label">{{parameter.label}}</span>
+                                                <span class="effect-parameter-value">{{parameter.displayValue}}</span>
+                                            </span>
+                                        {{/each}}
                                     </span>
-                                {{else}}
-                                    {{#if entry.modifier}}
-                                        <span class="effect-entry-modifier-display" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.modifierLabel' }}">
-                                            {{entry.modifier}}
-                                        </span>
-                                    {{/if}}
                                 {{/if}}
                                 <span class="effect-entry-total" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.totalLabel' }}">
                                     {{entry.totalValue}}
