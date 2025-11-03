@@ -1727,6 +1727,22 @@ export class RollnKeepDialog extends FormApplication {
     }
 
     /**
+     * Determine if an effect entry is locked from further user modification.
+     * @param {object|null} entry
+     * @returns {boolean}
+     * @private
+     */
+    _isEffectEntryLocked(entry) {
+        if (!entry) {
+            return false;
+        }
+
+        const status = entry.status;
+        const { triggered, completed } = RollnKeepDialog.EFFECT_ENTRY_STATUS;
+        return status === triggered || status === completed;
+    }
+
+    /**
      * Locate a parameter within an effect entry.
      * @param {object} entry
      * @param {string|null} parameterName
@@ -1768,6 +1784,10 @@ export class RollnKeepDialog extends FormApplication {
             return;
         }
 
+        if (this._isEffectEntryLocked(entry)) {
+            return;
+        }
+
         const parameter = this._findEffectEntryParameter(entry, parameterName, parameterIndex);
         if (!parameter || !parameter.editable) {
             return;
@@ -1799,6 +1819,10 @@ export class RollnKeepDialog extends FormApplication {
 
         const entry = this._findEffectEntry(effectKey);
         if (!entry) {
+            return;
+        }
+
+        if (this._isEffectEntryLocked(entry) && entry.status !== status) {
             return;
         }
 
@@ -1846,6 +1870,10 @@ export class RollnKeepDialog extends FormApplication {
     async _executeEffectEntryNow(effectKey) {
         const entry = this._findEffectEntry(effectKey);
         if (!entry) {
+            return;
+        }
+
+        if (this._isEffectEntryLocked(entry)) {
             return;
         }
 
@@ -1922,8 +1950,12 @@ export class RollnKeepDialog extends FormApplication {
      * @private
      */
     async _finalizeEffectEntries() {
-        const entries = (this.object.effectEntries ?? []).filter((entry) =>
-            [RollnKeepDialog.EFFECT_ENTRY_STATUS.active, RollnKeepDialog.EFFECT_ENTRY_STATUS.triggered].includes(entry.status)
+        const entries = (this.object.effectEntries ?? []).filter(
+            (entry) =>
+                !this._isEffectEntryLocked(entry) &&
+                [RollnKeepDialog.EFFECT_ENTRY_STATUS.active, RollnKeepDialog.EFFECT_ENTRY_STATUS.triggered].includes(
+                    entry.status
+                )
         );
 
         entries.sort((a, b) => {
@@ -1941,6 +1973,10 @@ export class RollnKeepDialog extends FormApplication {
         });
 
         for (const entry of entries) {
+            if (this._isEffectEntryLocked(entry)) {
+                continue;
+            }
+
             entry.status = RollnKeepDialog.EFFECT_ENTRY_STATUS.triggered;
             let changed = this._persistEffectEntries();
             if (changed) {
@@ -2114,10 +2150,33 @@ export class RollnKeepDialog extends FormApplication {
         const effectEntries = Array.isArray(this.object.effectEntries) ? this.object.effectEntries : [];
         const decoratedEffectEntries = effectEntries.map((entry) => {
             const clone = foundry.utils.deepClone(entry);
+            const isLocked = this._isEffectEntryLocked(clone);
+            clone.isLocked = isLocked;
+            if (isLocked && Array.isArray(clone.parameters)) {
+                clone.parameters.forEach((parameter) => {
+                    if (!parameter) {
+                        return;
+                    }
+                    parameter.editable = false;
+                    parameter.isEditable = false;
+                });
+            }
             this._recalculateEffectEntryParameterState(clone);
-            clone.parameters = Array.isArray(clone.parameters)
-                ? clone.parameters.map((parameter, idx) => this._decorateEffectParameter(parameter, idx))
-                : [];
+
+            const parameters = Array.isArray(clone.parameters) ? clone.parameters : [];
+            clone.parameters = parameters.map((parameter, idx) => {
+                if (isLocked && parameter) {
+                    parameter.editable = false;
+                    parameter.isEditable = false;
+                }
+
+                const decorated = this._decorateEffectParameter(parameter, idx);
+                if (isLocked) {
+                    decorated.isEditable = false;
+                }
+                return decorated;
+            });
+
             clone.parameterMap = this._getEffectEntryParameterMap(clone);
             clone.totalValue = Number.isFinite(clone.totalValue) ? Number(clone.totalValue) : 0;
             clone.hasParameters = clone.parameters.length > 0;
@@ -2309,6 +2368,11 @@ export class RollnKeepDialog extends FormApplication {
                 return;
             }
 
+            const parentEntry = target?.closest?.(".effect-entry");
+            if (parentEntry?.dataset?.statusLocked === "true") {
+                return;
+            }
+
             let value;
             if (target.type === "checkbox") {
                 value = target.checked;
@@ -2328,6 +2392,11 @@ export class RollnKeepDialog extends FormApplication {
             const button = event.currentTarget ?? event.target;
             const effectKey = button?.dataset?.effectKey;
             if (!effectKey) {
+                return;
+            }
+
+            const parentEntry = button?.closest?.(".effect-entry");
+            if (parentEntry?.dataset?.statusLocked === "true") {
                 return;
             }
 
@@ -2371,14 +2440,19 @@ export class RollnKeepDialog extends FormApplication {
         });
 
         if ((this.object.effectEntries ?? []).length > 0) {
+            const selector = '.effect-entry[data-status-locked="false"]';
+            const isLockedElement = (element) => element?.dataset?.statusLocked === "true";
             new foundry.applications.ux.ContextMenu.implementation(
                 html[0],
-                ".effect-entry",
+                selector,
                 [
                     {
                         name: game.i18n.localize("l5r5e.dice.roll_n_keep.effects.menu.reject"),
                         icon: '<i class="fas fa-ban"></i>',
                         callback: (element) => {
+                            if (isLockedElement(element)) {
+                                return;
+                            }
                             const key = element.dataset.effectKey;
                             void this._setEffectStatus(key, RollnKeepDialog.EFFECT_ENTRY_STATUS.rejected);
                         },
@@ -2387,6 +2461,9 @@ export class RollnKeepDialog extends FormApplication {
                         name: game.i18n.localize("l5r5e.dice.roll_n_keep.effects.menu.executeNow"),
                         icon: '<i class="fas fa-play"></i>',
                         callback: (element) => {
+                            if (isLockedElement(element)) {
+                                return;
+                            }
                             const key = element.dataset.effectKey;
                             void this._executeEffectEntryNow(key);
                         },
