@@ -9,7 +9,7 @@
                             <div class="effect-parameter-control">
                                 {{#if entryData.isLocked}}
                                     <span class="effect-parameter-value">{{parameter.displayValue}}</span>
-                                {{else if parameter.isEditable}}
+                                {{else if (and @root.isEditable parameter.isEditable)}}
                                     {{#if parameter.hasAllowedValues}}
                                         <select id="{{entryData.key}}-parameter-{{paramIdx}}" class="effect-parameter-input" data-effect-key="{{entryData.key}}" data-parameter-name="{{parameter.name}}" data-parameter-index="{{paramIdx}}" {{#if parameter.multiple}}multiple{{/if}}>
                                             {{#each parameter.selectOptions as |option|}}

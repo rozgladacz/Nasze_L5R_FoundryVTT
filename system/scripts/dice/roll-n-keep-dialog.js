@@ -2208,6 +2208,17 @@ export class RollnKeepDialog extends FormApplication {
                 if (isLocked) {
                     decorated.isEditable = false;
                 }
+
+                if (parameter) {
+                    parameter.editable = Boolean(parameter.editable) && isEditable;
+                    parameter.isEditable = Boolean(parameter.isEditable) && isEditable;
+                }
+
+                if (decorated) {
+                    decorated.editable = Boolean(decorated.editable) && isEditable;
+                    decorated.isEditable = Boolean(decorated.isEditable) && isEditable;
+                }
+
                 return decorated;
             });
 
