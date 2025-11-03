@@ -291,7 +291,8 @@
                         "triggered": "Triggered",
                         "completed": "Completed"
                     },
-                    "macroError": "An error occurred while executing an effect macro."
+                    "macroError": "An error occurred while executing an effect macro.",
+                    "macroNotExecuted": "Effect macro did not execute; the entry has been restored."
                 }
             }
         },
