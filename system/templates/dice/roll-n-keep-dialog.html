@@ -7,7 +7,9 @@
                         <div class="effect-parameter" data-parameter-name="{{parameter.name}}" data-parameter-index="{{paramIdx}}">
                             <label class="effect-parameter-label" for="{{entryData.key}}-parameter-{{paramIdx}}">{{parameter.label}}</label>
                             <div class="effect-parameter-control">
-                                {{#if parameter.isEditable}}
+                                {{#if entryData.isLocked}}
+                                    <span class="effect-parameter-value">{{parameter.displayValue}}</span>
+                                {{else if parameter.isEditable}}
                                     {{#if parameter.hasAllowedValues}}
                                         <select id="{{entryData.key}}-parameter-{{paramIdx}}" class="effect-parameter-input" data-effect-key="{{entryData.key}}" data-parameter-name="{{parameter.name}}" data-parameter-index="{{paramIdx}}" {{#if parameter.multiple}}multiple{{/if}}>
                                             {{#each parameter.selectOptions as |option|}}
@@ -248,9 +250,10 @@
                     </header>
                     <div class="apply-effect-list">
                         {{#each effectEntries as |entry|}}
-                            <div class="effect-entry apply-effect-entry {{entry.status}}"
+                            <div class="effect-entry apply-effect-entry {{entry.status}}{{#if entry.isLocked}} locked{{/if}}"
                                 data-effect-key="{{entry.key}}"
                                 data-status="{{entry.status}}"
+                                data-status-locked="{{#if entry.isLocked}}true{{else}}false{{/if}}"
                                 data-priority="{{entry.priority}}"
                                 data-has-parameters="{{#if entry.hasParameters}}true{{else}}false{{/if}}"
                                 data-has-final-macro="{{#if entry.hasFinalMacro}}true{{else}}false{{/if}}"
@@ -314,9 +317,10 @@
             </header>
             <div class="effect-entries">
                 {{#each effectEntries as |entry|}}
-                    <div class="effect-entry {{entry.status}}"
+                    <div class="effect-entry {{entry.status}}{{#if entry.isLocked}} locked{{/if}}"
                         data-effect-key="{{entry.key}}"
                         data-status="{{entry.status}}"
+                        data-status-locked="{{#if entry.isLocked}}true{{else}}false{{/if}}"
                         data-priority="{{entry.priority}}"
                         data-has-parameters="{{#if entry.hasParameters}}true{{else}}false{{/if}}"
                         data-has-final-macro="{{#if entry.hasFinalMacro}}true{{else}}false{{/if}}"
