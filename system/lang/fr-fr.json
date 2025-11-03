@@ -291,7 +291,8 @@
                         "triggered": "Déclenché",
                         "completed": "Terminé"
                     },
-                    "macroError": "Une erreur est survenue lors de l'exécution d'une macro d'effet."
+                    "macroError": "Une erreur est survenue lors de l'exécution d'une macro d'effet.",
+                    "macroNotExecuted": "La macro d'effet ne s'est pas exécutée ; l'entrée a été restaurée."
                 }
             }
         },
