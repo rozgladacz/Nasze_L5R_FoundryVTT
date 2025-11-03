@@ -7,7 +7,9 @@
                         <div class="effect-parameter" data-parameter-name="{{parameter.name}}" data-parameter-index="{{paramIdx}}">
                             <label class="effect-parameter-label" for="{{entryData.key}}-parameter-{{paramIdx}}">{{parameter.label}}</label>
                             <div class="effect-parameter-control">
-                                {{#if parameter.isEditable}}
+                                {{#if entryData.isLocked}}
+                                    <span class="effect-parameter-value">{{parameter.displayValue}}</span>
+                                {{else if parameter.isEditable}}
                                     {{#if parameter.hasAllowedValues}}
                                         <select id="{{entryData.key}}-parameter-{{paramIdx}}" class="effect-parameter-input" data-effect-key="{{entryData.key}}" data-parameter-name="{{parameter.name}}" data-parameter-index="{{paramIdx}}" {{#if parameter.multiple}}multiple{{/if}}>
                                             {{#each parameter.selectOptions as |option|}}
@@ -241,57 +243,60 @@
                 </div>
                 {{/if}}
 
-                {{#if effectEntries.length}}
+                {{#if hasAnyEffectEntries}}
                 <div class="apply-effect-summary">
                     <header class="section-header apply-effects-header">
                         <i class="fas fa-bolt"></i> {{ localize 'l5r5e.dice.roll_n_keep.effects.title' }}
                     </header>
-                    <div class="apply-effect-list">
-                        {{#each effectEntries as |entry|}}
-                            <div class="effect-entry apply-effect-entry {{entry.status}}"
-                                data-effect-key="{{entry.key}}"
-                                data-status="{{entry.status}}"
-                                data-priority="{{entry.priority}}"
-                                data-has-parameters="{{#if entry.hasParameters}}true{{else}}false{{/if}}"
-                                data-has-final-macro="{{#if entry.hasFinalMacro}}true{{else}}false{{/if}}"
-                                data-total-value="{{entry.totalValue}}">
-                                <div class="effect-entry-main">
-                                    <span class="effect-entry-status-indicator" title="{{#if (lookup @root.effectStatusLabels entry.status)}}{{ localize (lookup @root.effectStatusLabels entry.status) }}{{/if}}">
-                                        <i class="fas fa-circle"></i>
-                                    </span>
-                                    <span class="effect-entry-description">{{entry.description}}</span>
-                                </div>
-                                <div class="effect-entry-values apply-effect-values">
-                                    {{> effectParameterControls entry=entry}}
-                                    <span class="effect-entry-total" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.totalLabel' }}">
-                                        {{entry.totalValue}}
-                                    </span>
-                                </div>
-                                {{#if entry.details}}
-                                    <div class="effect-entry-details apply-effect-details">{{entry.details}}</div>
-                                {{/if}}
-                                <div class="effect-entry-footer apply-effect-footer">
-                                    <span class="effect-entry-status-label">
-                                        {{#if (lookup @root.effectStatusLabels entry.status)}}
-                                            {{ localize (lookup @root.effectStatusLabels entry.status) }}
-                                        {{else}}
-                                            {{entry.status}}
-                                        {{/if}}
-                                    </span>
-                                    <span class="effect-entry-macro-indicator">
-                                        {{#if entry.hasFinalMacro}}
-                                            <i class="fas fa-scroll" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.finalMacroLabel' }}"></i>
-                                        {{else}}
-                                            <span class="effect-entry-no-macro" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.noFinalMacro' }}">
-                                                <i class="fas fa-ban"></i>
-                                            </span>
-                                        {{/if}}
-                                    </span>
-                                </div>
-                            </div>
-                        {{/each}}
-                    </div>
-                    {{#if hasRejectedEffects}}
+                    {{#if hasVisibleEffectEntries}}
+    <div class="apply-effect-list">
+      {{#each visibleEffectEntries as |entry|}}
+        <div class="effect-entry apply-effect-entry {{entry.status}}{{#if entry.isLocked}} locked{{/if}}{{#if entry.isNew}} is-new{{/if}}"
+             data-effect-key="{{entry.key}}"
+             data-status="{{entry.status}}"
+             data-status-locked="{{#if entry.isLocked}}true{{else}}false{{/if}}"
+             data-priority="{{entry.priority}}"
+             data-has-parameters="{{#if entry.hasParameters}}true{{else}}false{{/if}}"
+             data-has-final-macro="{{#if entry.hasFinalMacro}}true{{else}}false{{/if}}"
+             data-total-value="{{entry.totalValue}}">
+          <div class="effect-entry-main">
+            <span class="effect-entry-status-indicator" title="{{#if (lookup @root.effectStatusLabels entry.status)}}{{ localize (lookup @root.effectStatusLabels entry.status) }}{{/if}}">
+              <i class="fas fa-circle"></i>
+            </span>
+            <span class="effect-entry-description">{{entry.description}}</span>
+          </div>
+          <div class="effect-entry-values apply-effect-values">
+            {{> effectParameterControls entry=entry}}
+            <span class="effect-entry-total" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.totalLabel' }}">
+              {{entry.totalValue}}
+            </span>
+          </div>
+          {{#if entry.details}}
+            <div class="effect-entry-details apply-effect-details">{{entry.details}}</div>
+          {{/if}}
+          <div class="effect-entry-footer apply-effect-footer">
+            <span class="effect-entry-status-label">
+              {{#if (lookup @root.effectStatusLabels entry.status)}}
+                {{ localize (lookup @root.effectStatusLabels entry.status) }}
+              {{else}}
+                {{entry.status}}
+              {{/if}}
+            </span>
+            <span class="effect-entry-macro-indicator">
+              {{#if entry.hasFinalMacro}}
+                <i class="fas fa-scroll" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.finalMacroLabel' }}"></i>
+              {{else}}
+                <span class="effect-entry-no-macro" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.noFinalMacro' }}">
+                  <i class="fas fa-ban"></i>
+                </span>
+              {{/if}}
+            </span>
+          </div>
+        </div>
+      {{/each}}
+    </div>
+  {{/if}}
+                    {{#if rejectedEffectEntries.length}}
                         <div class="apply-effect-actions">
                             <button type="button" class="restore-rejected pointer-choice">
                                 <i class="fas fa-undo"></i> {{ localize 'l5r5e.dice.roll_n_keep.effects.menu.restore' }}
@@ -307,53 +312,54 @@
             {{/if}}
         {{/if}}
     </section>
-    {{#if effectEntries.length}}
+    {{#if hasVisibleEffectEntries}}
         <section class="rnk-effects">
             <header class="section-header">
                 <i class="fas fa-bolt"></i> {{ localize 'l5r5e.dice.roll_n_keep.effects.title' }}
             </header>
             <div class="effect-entries">
-                {{#each effectEntries as |entry|}}
-                    <div class="effect-entry {{entry.status}}"
-                        data-effect-key="{{entry.key}}"
-                        data-status="{{entry.status}}"
-                        data-priority="{{entry.priority}}"
-                        data-has-parameters="{{#if entry.hasParameters}}true{{else}}false{{/if}}"
-                        data-has-final-macro="{{#if entry.hasFinalMacro}}true{{else}}false{{/if}}"
-                        data-total-value="{{entry.totalValue}}">
-                        <div class="effect-entry-header">
-                            <span class="effect-entry-description">{{entry.description}}</span>
-                            <div class="effect-entry-values">
-                                {{> effectParameterControls entry=entry}}
-                                <span class="effect-entry-total" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.totalLabel' }}">
-                                    {{entry.totalValue}}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="effect-entry-footer">
-                            <span class="effect-entry-status">
-                                {{#if (lookup ../effectStatusLabels entry.status)}}
-                                    {{ localize (lookup ../effectStatusLabels entry.status) }}
-                                {{else}}
-                                    {{entry.status}}
-                                {{/if}}
-                            </span>
-                            <span class="effect-entry-meta">
-                                {{#if entry.hasFinalMacro}}
-                                    <i class="fas fa-scroll" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.finalMacroLabel' }}"></i>
-                                {{else}}
-                                    <span class="effect-entry-no-macro" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.noFinalMacro' }}">
-                                        <i class="fas fa-ban"></i>
-                                    </span>
-                                {{/if}}
-                            </span>
-                            {{#if entry.details}}
-                                <span class="effect-entry-details">{{entry.details}}</span>
-                            {{/if}}
-                        </div>
-                    </div>
-                {{/each}}
-            </div>
+  {{#each visibleEffectEntries as |entry|}}
+    <div class="effect-entry {{entry.status}}{{#if entry.isLocked}} locked{{/if}}{{#if entry.isNew}} is-new{{/if}}"
+         data-effect-key="{{entry.key}}"
+         data-status="{{entry.status}}"
+         data-status-locked="{{#if entry.isLocked}}true{{else}}false{{/if}}"
+         data-priority="{{entry.priority}}"
+         data-has-parameters="{{#if entry.hasParameters}}true{{else}}false{{/if}}"
+         data-has-final-macro="{{#if entry.hasFinalMacro}}true{{else}}false{{/if}}"
+         data-total-value="{{entry.totalValue}}">
+      <div class="effect-entry-header">
+        <span class="effect-entry-description">{{entry.description}}</span>
+        <div class="effect-entry-values">
+          {{> effectParameterControls entry=entry}}
+          <span class="effect-entry-total" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.totalLabel' }}">
+            {{entry.totalValue}}
+          </span>
+        </div>
+      </div>
+      <div class="effect-entry-footer">
+        <span class="effect-entry-status">
+          {{#if (lookup ../effectStatusLabels entry.status)}}
+            {{ localize (lookup ../effectStatusLabels entry.status) }}
+          {{else}}
+            {{entry.status}}
+          {{/if}}
+        </span>
+        <span class="effect-entry-meta">
+          {{#if entry.hasFinalMacro}}
+            <i class="fas fa-scroll" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.finalMacroLabel' }}"></i>
+          {{else}}
+            <span class="effect-entry-no-macro" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.noFinalMacro' }}">
+              <i class="fas fa-ban"></i>
+            </span>
+          {{/if}}
+        </span>
+        {{#if entry.details}}
+          <span class="effect-entry-details">{{entry.details}}</span>
+        {{/if}}
+      </div>
+    </div>
+  {{/each}}
+</div>
         </section>
     {{/if}}
 </form>

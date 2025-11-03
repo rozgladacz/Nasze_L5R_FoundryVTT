@@ -291,7 +291,8 @@
                         "triggered": "Attivato",
                         "completed": "Completato"
                     },
-                    "macroError": "Si è verificato un errore durante l'esecuzione di una macro dell'effetto."
+                    "macroError": "Si è verificato un errore durante l'esecuzione di una macro dell'effetto.",
+                    "macroNotExecuted": "La macro dell'effetto non è stata eseguita; la voce è stata ripristinata."
                 }
             }
         },

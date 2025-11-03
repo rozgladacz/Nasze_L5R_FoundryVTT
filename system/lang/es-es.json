@@ -291,7 +291,8 @@
                         "triggered": "Activado",
                         "completed": "Completado"
                     },
-                    "macroError": "Se produjo un error al ejecutar una macro de efecto."
+                    "macroError": "Se produjo un error al ejecutar una macro de efecto.",
+                    "macroNotExecuted": "La macro de efecto no se ejecutó; la entrada se ha restaurado."
                 }
             }
         },
