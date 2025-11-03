@@ -1042,7 +1042,7 @@ export class RollnKeepDialog extends FormApplication {
         }
     }
 
-    _mergeEffectEntryParameters(previousParameters, currentParameters) {
+    _mergeEffectEntryParameters(previousParameters, currentParameters, { lockValues = false } = {}) {
         if (!Array.isArray(currentParameters)) {
             return [];
         }
@@ -1066,7 +1066,30 @@ export class RollnKeepDialog extends FormApplication {
             }
             if (previous) {
                 const previousValue = previous.userValue ?? previous.value ?? previous.defaultValue;
-                clone.userValue = this._coerceParameterValue(clone, previousValue, clone.defaultValue);
+                const normalizedPrevious = this._coerceParameterValue(clone, previousValue, clone.defaultValue);
+                const currentValue = clone.userValue ?? clone.value ?? clone.defaultValue;
+                const normalizedCurrent = this._coerceParameterValue(clone, currentValue, clone.defaultValue);
+
+                const valuesMatch = (() => {
+                    if (typeof foundry?.utils?.deepEqual === "function") {
+                        return foundry.utils.deepEqual(normalizedCurrent, normalizedPrevious);
+                    }
+                    if (typeof foundry?.utils?.deepEquals === "function") {
+                        return foundry.utils.deepEquals(normalizedCurrent, normalizedPrevious);
+                    }
+                    try {
+                        return JSON.stringify(normalizedCurrent) === JSON.stringify(normalizedPrevious);
+                    } catch (error) {
+                        console.warn("RollnKeepDialog | Failed to compare parameter values", error);
+                        return Object.is(normalizedCurrent, normalizedPrevious);
+                    }
+                })();
+
+                const shouldAdoptPreviousValue = lockValues || valuesMatch;
+
+                if (shouldAdoptPreviousValue) {
+                    clone.userValue = foundry.utils.deepClone(normalizedPrevious);
+                }
             }
             return clone;
         });
@@ -1520,7 +1543,8 @@ export class RollnKeepDialog extends FormApplication {
                         normalized.details = normalized.details ?? previous.details ?? null;
                         normalized.parameters = this._mergeEffectEntryParameters(
                             previous.parameters ?? [],
-                            normalized.parameters ?? []
+                            normalized.parameters ?? [],
+                            { lockValues: shouldReuseResolvedState }
                         );
                         normalized.isNew = false;
                         staleKeys.delete(normalized.key);
