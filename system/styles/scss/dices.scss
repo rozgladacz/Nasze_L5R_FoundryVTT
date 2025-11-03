@@ -470,6 +470,12 @@
             border: 1px solid rgba(0, 0, 0, 0.1);
             background: rgba(255, 255, 255, 0.85);
 
+            &.is-new {
+                border-color: rgba(30, 64, 175, 0.45);
+                box-shadow: 0 0 0 1px rgba(30, 64, 175, 0.15);
+                background: linear-gradient(135deg, rgba(191, 219, 254, 0.45), rgba(219, 234, 254, 0.4));
+            }
+
             &.rejected,
             &.effect--rejected,
             &.inactive,
@@ -652,6 +658,12 @@
                 border-radius: 0.25rem;
                 border: 1px solid rgba(0, 0, 0, 0.1);
                 background: rgba(255, 255, 255, 0.6);
+
+                &.is-new {
+                    border-color: rgba(30, 64, 175, 0.45);
+                    box-shadow: 0 0 0 1px rgba(30, 64, 175, 0.15);
+                    background: linear-gradient(135deg, rgba(191, 219, 254, 0.45), rgba(219, 234, 254, 0.4));
+                }
 
                 &.rejected,
                 &.effect--rejected {
