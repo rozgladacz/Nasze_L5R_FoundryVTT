@@ -250,7 +250,7 @@
                     </header>
                     <div class="apply-effect-list">
                         {{#each effectEntries as |entry|}}
-                            <div class="effect-entry apply-effect-entry {{entry.status}}{{#if entry.isLocked}} locked{{/if}}"
+                            <div class="effect-entry apply-effect-entry {{entry.status}}{{#if entry.isLocked}} locked{{/if}}{{#if entry.isNew}} is-new{{/if}}"
                                 data-effect-key="{{entry.key}}"
                                 data-status="{{entry.status}}"
                                 data-status-locked="{{#if entry.isLocked}}true{{else}}false{{/if}}"
@@ -317,7 +317,7 @@
             </header>
             <div class="effect-entries">
                 {{#each effectEntries as |entry|}}
-                    <div class="effect-entry {{entry.status}}{{#if entry.isLocked}} locked{{/if}}"
+                    <div class="effect-entry {{entry.status}}{{#if entry.isLocked}} locked{{/if}}{{#if entry.isNew}} is-new{{/if}}"
                         data-effect-key="{{entry.key}}"
                         data-status="{{entry.status}}"
                         data-status-locked="{{#if entry.isLocked}}true{{else}}false{{/if}}"
