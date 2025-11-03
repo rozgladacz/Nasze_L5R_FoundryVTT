@@ -113,7 +113,12 @@
                     "sorting": "m",
                     "packs": [
                         "core-name-tables",
-                        "core-macros"
+                        "core-macros",
+                        "core-macros-base-effects",
+                        "core-macros-test",
+                        "core-macros-test-in",
+                        "core-macros-test-out",
+                        "core-macros-action"
                     ]
                 }
             ]
@@ -336,6 +341,40 @@
             "path": "packs/core-macros.db",
             "type": "Macro",
             "system": "l5r5e"
+        },
+        {
+            "name": "core-macros-base-effects",
+            "label": "L5R5E Macros: Base Effects",
+            "path": "packs/core-macros-base-effects.db",
+            "type": "Macro",
+            "system": "l5r5e"
+        },{
+            "name": "core-macros-test",
+            "label": "L5R5E Macros: Tests Triggers",
+            "path": "packs/core-macro-tests.db",
+            "type": "Macro",
+            "system": "l5r5e"
+        },
+        {
+            "name": "core-macros-test-in",
+            "label": "L5R5E Macros: Tests inputs",
+            "path": "packs/core-macros-test-in.db",
+            "type": "Macro",
+            "system": "l5r5e"
+        },
+        {
+            "name": "core-macros-test-out",
+            "label": "L5R5E Macros: Tests outputs",
+            "path": "packs/core-macros-test-out.db",
+            "type": "Macro",
+            "system": "l5r5e"
+        },
+        {
+            "name": "core-macros-action",
+            "label": "L5R5E Macros: Action handlers",
+            "path": "packs/core-macros-action.db",
+            "type": "Macro",
+            "system": "l5r5e"
         }
     ],
     "languages": [
@@ -358,38 +397,6 @@
             "lang": "it",
             "name": "Italian (Italy)",
             "path": "lang/it-it.json"
-        }
-    ],
-    "media": [
-        {
-            "type": "screenshot",
-            "url": "https://gitlab.com/teaml5r/l5r5e/-/raw/master/screenshoots/login.jpg?raw=true",
-            "caption": "Login screen"
-        },
-        {
-            "type": "screenshot",
-            "url": "https://gitlab.com/teaml5r/l5r5e/-/raw/master/screenshoots/roll.jpg?raw=true",
-            "caption": "DicePicker and Roll and Keep"
-        },
-        {
-            "type": "screenshot",
-            "url": "https://gitlab.com/teaml5r/l5r5e/-/raw/master/screenshoots/school.jpg?raw=true",
-            "caption": "Experience and School"
-        },
-        {
-            "type": "screenshot",
-            "url": "https://gitlab.com/teaml5r/l5r5e/-/raw/master/screenshoots/sheet_pc.jpg?raw=true",
-            "caption": "PC sheet"
-        },
-        {
-            "type": "screenshot",
-            "url": "https://gitlab.com/teaml5r/l5r5e/-/raw/master/screenshoots/sheet_npc_army.jpg?raw=true",
-            "caption": "NPC and Army sheets"
-        },
-        {
-            "type": "screenshot",
-            "url": "https://gitlab.com/teaml5r/l5r5e/-/raw/master/screenshoots/compendiums.jpg?raw=true",
-            "caption": "Compendiums"
         }
     ]
 }
