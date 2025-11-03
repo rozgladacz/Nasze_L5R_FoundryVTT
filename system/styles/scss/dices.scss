@@ -830,8 +830,7 @@
                         box-shadow: 0 0 6px rgba(26, 188, 156, 0.5);
                     }
 
-                    &.is-disabled,
-                    &[disabled] {
+                    &.is-disabled {
                         opacity: 0.5;
                         cursor: not-allowed;
                     }
