@@ -1504,6 +1504,11 @@ export class RollnKeepDialog extends FormApplication {
         const updatedEntries = new Map();
         const staleKeys = new Set(existingMap.keys());
         let statesChanged = false;
+        const frozenStatuses = new Set([
+            RollnKeepDialog.EFFECT_ENTRY_STATUS.rejected,
+            RollnKeepDialog.EFFECT_ENTRY_STATUS.triggered,
+            RollnKeepDialog.EFFECT_ENTRY_STATUS.completed,
+        ]);
 
         const canGenerate = Boolean(this.roll) && (this.isOwner || game.user.isGM);
         if (canGenerate && Array.isArray(this.object.rollEffects) && this.object.rollEffects.length > 0) {
@@ -1527,7 +1532,13 @@ export class RollnKeepDialog extends FormApplication {
 
                     const previous = existingMap.get(normalized.key);
                     if (previous) {
-                        normalized.status = previous.status ?? normalized.status;
+                        const shouldPreserveStatus = frozenStatuses.has(previous.status);
+                        if (shouldPreserveStatus) {
+                            normalized.status = previous.status;
+                        } else {
+                            normalized.status =
+                                normalized.status ?? RollnKeepDialog.EFFECT_ENTRY_STATUS.active;
+                        }
                         const shouldReuseResolvedState =
                             previous.status === RollnKeepDialog.EFFECT_ENTRY_STATUS.triggered ||
                             previous.status === RollnKeepDialog.EFFECT_ENTRY_STATUS.completed;
