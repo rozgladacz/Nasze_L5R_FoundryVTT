@@ -1877,6 +1877,9 @@ export class RollnKeepDialog extends FormApplication {
             return;
         }
 
+        const previousStatus =
+            entry.status ?? RollnKeepDialog.EFFECT_ENTRY_STATUS.active;
+
         entry.status = RollnKeepDialog.EFFECT_ENTRY_STATUS.triggered;
         let changed = this._persistEffectEntries();
         if (changed) {
@@ -1886,11 +1889,19 @@ export class RollnKeepDialog extends FormApplication {
         const executed = await this._executeEffectEntryMacro(entry);
         if (executed) {
             entry.status = RollnKeepDialog.EFFECT_ENTRY_STATUS.completed;
+        } else {
+            entry.status = previousStatus;
         }
 
         changed = this._persistEffectEntries();
         if (changed) {
             await this._toChatMessage();
+        }
+
+        if (!executed) {
+            ui.notifications?.warn?.(
+                game.i18n.localize("l5r5e.dice.roll_n_keep.effects.macroNotExecuted")
+            );
         }
 
         this.render(false);
@@ -1977,6 +1988,9 @@ export class RollnKeepDialog extends FormApplication {
                 continue;
             }
 
+            const previousStatus =
+                entry.status ?? RollnKeepDialog.EFFECT_ENTRY_STATUS.active;
+
             entry.status = RollnKeepDialog.EFFECT_ENTRY_STATUS.triggered;
             let changed = this._persistEffectEntries();
             if (changed) {
@@ -1986,11 +2000,20 @@ export class RollnKeepDialog extends FormApplication {
             const executed = await this._executeEffectEntryMacro(entry);
             if (executed) {
                 entry.status = RollnKeepDialog.EFFECT_ENTRY_STATUS.completed;
+            } else {
+                entry.status = previousStatus;
             }
 
             changed = this._persistEffectEntries();
             if (changed) {
                 await this._toChatMessage();
+            }
+
+            if (!executed) {
+                ui.notifications?.warn?.(
+                    game.i18n.localize("l5r5e.dice.roll_n_keep.effects.macroNotExecuted")
+                );
+                this.render(false);
             }
         }
     }

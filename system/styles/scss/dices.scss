@@ -472,6 +472,10 @@
 
             &.is-hidden {
                 display: none;
+            &.is-new {
+                border-color: rgba(30, 64, 175, 0.45);
+                box-shadow: 0 0 0 1px rgba(30, 64, 175, 0.15);
+                background: linear-gradient(135deg, rgba(191, 219, 254, 0.45), rgba(219, 234, 254, 0.4));
             }
 
             &.rejected,
@@ -659,6 +663,10 @@
 
                 &.is-hidden {
                     display: none;
+                &.is-new {
+                    border-color: rgba(30, 64, 175, 0.45);
+                    box-shadow: 0 0 0 1px rgba(30, 64, 175, 0.15);
+                    background: linear-gradient(135deg, rgba(191, 219, 254, 0.45), rgba(219, 234, 254, 0.4));
                 }
 
                 &.rejected,
