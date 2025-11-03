@@ -2206,9 +2206,15 @@ export class RollnKeepDialog extends FormApplication {
             clone.hasFinalMacro = typeof clone.finalMacro === "string" && clone.finalMacro.trim().length > 0;
             return clone;
         });
-        const hasRejectedEffects = decoratedEffectEntries.some(
+        const rejectedEffectEntries = decoratedEffectEntries.filter(
             (entry) => entry.status === RollnKeepDialog.EFFECT_ENTRY_STATUS.rejected
         );
+        const visibleEffectEntries = decoratedEffectEntries.filter(
+            (entry) => entry.status !== RollnKeepDialog.EFFECT_ENTRY_STATUS.rejected
+        );
+        const hasRejectedEffects = rejectedEffectEntries.length > 0;
+        const hasVisibleEffectEntries = visibleEffectEntries.length > 0;
+        const hasAnyEffectEntries = hasVisibleEffectEntries || hasRejectedEffects;
 
         return {
             ...(await super.getData(options)),
@@ -2224,11 +2230,15 @@ export class RollnKeepDialog extends FormApplication {
             cssClass: this.options.classes.join(" "),
             data: this.object,
             l5r5e: rollData,
-            effectEntries: decoratedEffectEntries,
+            effectEntries: visibleEffectEntries,
+            visibleEffectEntries,
+            rejectedEffectEntries,
             effectStatuses: RollnKeepDialog.EFFECT_ENTRY_STATUS,
             effectStatusLabels,
             isEditable,
             hasRejectedEffects,
+            hasVisibleEffectEntries,
+            hasAnyEffectEntries,
         };
     }
 
