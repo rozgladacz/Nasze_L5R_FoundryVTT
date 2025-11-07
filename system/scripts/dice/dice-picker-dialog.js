@@ -984,8 +984,8 @@ export class DicePickerDialog extends FormApplication {
         if (this._actor) {
             const actorData = foundry.utils.duplicate(this._actor.system);
 
-            // Update the actor stance on initiative only
-            if (this.object.isInitiativeRoll) {
+            // Synchronize the actor stance with the test being rolled
+            if (typeof this.object?.ring?.id === "string" && this.object.ring.id.length > 0) {
                 actorData.stance = this.object.ring.id;
             }
 
