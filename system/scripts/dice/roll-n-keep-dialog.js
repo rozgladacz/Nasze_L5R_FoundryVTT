@@ -310,10 +310,10 @@ export class RollnKeepDialog extends FormApplication {
      * @param {unknown} entryData
      * @param {number} entryIdx
      * @param {object} effect
-     * @returns {object|null}
+     * @returns {Promise<object|null>}
      * @private
      */
-    _normalizeEffectEntry(effectIndex, entryData, entryIdx, effect) {
+    async _normalizeEffectEntry(effectIndex, entryData, entryIdx, effect) {
         if (entryData === undefined || entryData === null) {
             return null;
         }
@@ -375,7 +375,13 @@ export class RollnKeepDialog extends FormApplication {
             }
 
             const macroCandidate =
-                entryData.finalMacro ?? entryData.executeMacro ?? entryData.execute ?? entryData.resultMacro ?? null;
+                entryData.finalMacro ??
+                entryData.executeMacro ??
+                entryData.execute ??
+                entryData.resultMacro ??
+                entryData.out_macro ??
+                entryData.outMacro ??
+                null;
             if (typeof macroCandidate === "string" && macroCandidate.trim().length > 0) {
                 baseEntry.finalMacro = macroCandidate.trim();
             } else if (typeof entryData.macro === "string" && entryData.macro.trim().length > 0) {
@@ -548,6 +554,38 @@ export class RollnKeepDialog extends FormApplication {
 
         baseEntry.order = Number.isFinite(baseEntry.order) ? Number(baseEntry.order) : entryIdx;
         baseEntry.key = this._getEffectEntryKey(baseEntry.effectIndex, baseEntry.order);
+
+        if (
+            !baseEntry.description &&
+            typeof baseEntry.finalMacro === "string" &&
+            baseEntry.finalMacro.trim().length > 0
+        ) {
+            const finalMacroIdentifier = baseEntry.finalMacro.trim();
+            baseEntry.finalMacro = finalMacroIdentifier;
+            let derivedLabel = "";
+            try {
+                const resolvedMacro = await this._resolveMacro(finalMacroIdentifier);
+                if (resolvedMacro?.name) {
+                    derivedLabel = resolvedMacro.name.trim();
+                }
+            } catch (error) {
+                console.error(
+                    `RollnKeepDialog | Failed to resolve macro '${finalMacroIdentifier}' while deriving description`,
+                    error
+                );
+            }
+
+            if (!derivedLabel) {
+                const uuidSegments = finalMacroIdentifier.split(/[./:]/);
+                derivedLabel = uuidSegments[uuidSegments.length - 1] ?? finalMacroIdentifier;
+            }
+
+            derivedLabel = typeof derivedLabel === "string" ? derivedLabel.trim() : "";
+
+            if (derivedLabel) {
+                baseEntry.description = derivedLabel;
+            }
+        }
 
         if (!baseEntry.description) {
             baseEntry.description = game.i18n.localize("l5r5e.dice.roll_n_keep.effects.unknownLabel");
@@ -1524,10 +1562,12 @@ export class RollnKeepDialog extends FormApplication {
                     statesChanged = statesChanged || beforeState !== JSON.stringify(this.object.effectStates ?? {});
                 }
 
-                (macroEntries ?? []).forEach((macroEntry, entryIdx) => {
-                    const normalized = this._normalizeEffectEntry(effectIndex, macroEntry, entryIdx, effect);
+                const normalizedEntries = Array.isArray(macroEntries) ? macroEntries : [];
+                for (let entryIdx = 0; entryIdx < normalizedEntries.length; entryIdx += 1) {
+                    const macroEntry = normalizedEntries[entryIdx];
+                    const normalized = await this._normalizeEffectEntry(effectIndex, macroEntry, entryIdx, effect);
                     if (!normalized) {
-                        return;
+                        continue;
                     }
 
                     const previous = existingMap.get(normalized.key);
@@ -1565,7 +1605,7 @@ export class RollnKeepDialog extends FormApplication {
 
                     this._recalculateEffectEntryParameterState(normalized);
                     updatedEntries.set(normalized.key, normalized);
-                });
+                }
             }
         }
 
