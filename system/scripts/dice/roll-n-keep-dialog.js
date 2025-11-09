@@ -46,6 +46,7 @@ export class RollnKeepDialog extends FormApplication {
         effectParameterDefs: {},
         effectParameterValues: {},
         effectParameterModifiers: {},
+        effectsPreparedForStep: null,
     };
 
     /**
@@ -193,6 +194,7 @@ export class RollnKeepDialog extends FormApplication {
                 : {}
         );
         this.object.effectEntries = [];
+        this.object.effectsPreparedForStep = null;
     }
 
     /**
@@ -2173,7 +2175,19 @@ export class RollnKeepDialog extends FormApplication {
         const hasApplyOptions =
             canApplyStrifeToCharacter || canApplyFatigueToCharacter || canApplyStrifeToTarget || canApplyFatigueToTarget;
 
-        await this._prepareEffectEntries();
+        const currentStepIndex = Number.isInteger(this.object.currentStep) ? this.object.currentStep : 0;
+        const isSummaryStep = !this.object.dicesList?.[currentStepIndex];
+        if (isSummaryStep) {
+            const alreadyPrepared =
+                Number.isInteger(this.object.effectsPreparedForStep) &&
+                this.object.effectsPreparedForStep === currentStepIndex;
+            if (!alreadyPrepared) {
+                await this._prepareEffectEntries();
+                this.object.effectsPreparedForStep = currentStepIndex;
+            }
+        } else {
+            this.object.effectsPreparedForStep = null;
+        }
 
         rollData.hasAppliedResults =
             (rollData.strifeApplied || 0) > 0 ||
