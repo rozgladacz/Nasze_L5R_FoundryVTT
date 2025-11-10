@@ -435,15 +435,34 @@
 
     .rnk-action-buttons {
         display: flex;
+        flex: 0 0 100%;
+        width: 100%;
         gap: 0.5rem;
+        justify-content: center;
+        align-items: center;
         margin: 0.5rem 0.25rem 0.25rem;
 
         #undo-step {
             flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.5rem;
+            height: 2.5rem;
+            padding: 0;
+
+            i {
+                font-size: 1rem;
+                line-height: 1;
+            }
         }
 
         #finalize {
             flex: 1 1 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
             margin: 0;
         }
     }
