@@ -65,7 +65,6 @@ function normalizeRollEffects(effects) {
                         description: "",
                         defaultValue: numeric,
                         userValue: numeric,
-                        includeInTotal: true,
                         order: index,
                     };
                 }
@@ -173,10 +172,6 @@ function normalizeRollEffects(effects) {
                         clone.editable ?? clone.userEditable ?? clone.allowUserInput ?? clone.canEdit ?? clone.adjustable;
                     clone.editable =
                         editableCandidate !== undefined ? coerceBoolean(editableCandidate) : clone.type !== "info";
-
-                    const includeCandidate = clone.includeInTotal ?? clone.contributes ?? clone.addToTotal;
-                    clone.includeInTotal =
-                        includeCandidate !== undefined ? coerceBoolean(includeCandidate) : clone.type === "number";
 
                     clone.multiple = coerceBoolean(clone.multiple ?? clone.allowMultiple ?? false);
                     clone.required = coerceBoolean(clone.required ?? clone.mandatory ?? false);

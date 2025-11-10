@@ -262,8 +262,7 @@
              data-status-locked="{{#if entry.isLocked}}true{{else}}false{{/if}}"
              data-priority="{{entry.priority}}"
              data-has-parameters="{{#if entry.hasParameters}}true{{else}}false{{/if}}"
-             data-has-final-macro="{{#if entry.hasFinalMacro}}true{{else}}false{{/if}}"
-             data-total-value="{{entry.totalValue}}">
+             data-has-final-macro="{{#if entry.hasFinalMacro}}true{{else}}false{{/if}}">
           <div class="effect-entry-main">
             <span class="effect-entry-status-indicator" title="{{#if (lookup @root.effectStatusLabels entry.status)}}{{ localize (lookup @root.effectStatusLabels entry.status) }}{{/if}}">
               <i class="fas fa-circle"></i>
@@ -272,9 +271,6 @@
           </div>
           <div class="effect-entry-values apply-effect-values">
             {{> effectParameterControls entry=entry}}
-            <span class="effect-entry-total" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.totalLabel' }}">
-              {{entry.totalValue}}
-            </span>
           </div>
           {{#if entry.details}}
             <div class="effect-entry-details apply-effect-details">{{entry.details}}</div>
@@ -330,15 +326,11 @@
          data-status-locked="{{#if entry.isLocked}}true{{else}}false{{/if}}"
          data-priority="{{entry.priority}}"
          data-has-parameters="{{#if entry.hasParameters}}true{{else}}false{{/if}}"
-         data-has-final-macro="{{#if entry.hasFinalMacro}}true{{else}}false{{/if}}"
-         data-total-value="{{entry.totalValue}}">
+         data-has-final-macro="{{#if entry.hasFinalMacro}}true{{else}}false{{/if}}">
       <div class="effect-entry-header">
         <span class="effect-entry-description">{{entry.description}}</span>
         <div class="effect-entry-values">
           {{> effectParameterControls entry=entry}}
-          <span class="effect-entry-total" title="{{ localize 'l5r5e.dice.roll_n_keep.effects.totalLabel' }}">
-            {{entry.totalValue}}
-          </span>
         </div>
       </div>
       <div class="effect-entry-footer">

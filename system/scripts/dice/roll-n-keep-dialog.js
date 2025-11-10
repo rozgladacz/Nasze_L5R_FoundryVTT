@@ -412,7 +412,6 @@ export class RollnKeepDialog extends FormApplication {
                         type: "number",
                         defaultValue: Number.isFinite(baseValueCandidate) ? Number(baseValueCandidate) : 0,
                         userValue: Number.isFinite(baseValueCandidate) ? Number(baseValueCandidate) : 0,
-                        includeInTotal: true,
                         editable: false,
                     },
                     normalizedParameters.length,
@@ -430,7 +429,6 @@ export class RollnKeepDialog extends FormApplication {
                             type: "number",
                             defaultValue: Number.isFinite(modifierCandidate) ? Number(modifierCandidate) : 0,
                             userValue: Number.isFinite(modifierCandidate) ? Number(modifierCandidate) : 0,
-                            includeInTotal: true,
                             editable: true,
                         },
                         normalizedParameters.length,
@@ -632,7 +630,6 @@ export class RollnKeepDialog extends FormApplication {
                 description: "",
                 defaultValue: "",
                 userValue: "",
-                includeInTotal: false,
                 editable: false,
                 options: [],
                 multiple: false,
@@ -653,7 +650,6 @@ export class RollnKeepDialog extends FormApplication {
                 description: "",
                 defaultValue: numericValue,
                 userValue: numericValue,
-                includeInTotal: true,
                 editable: false,
                 options: [],
                 multiple: false,
@@ -755,14 +751,6 @@ export class RollnKeepDialog extends FormApplication {
             clone.editable = Boolean(editableCandidate);
         } else {
             clone.editable = normalizedType !== "info";
-        }
-
-        const includeCandidate = clone.includeInTotal ?? clone.contributes ?? clone.addToTotal ?? clone.sum ?? clone.counts;
-        if (includeCandidate !== undefined) {
-            clone.includeInTotal = Boolean(includeCandidate);
-        } else {
-            const numericTypes = ["number", "int", "integer", "float", "decimal"];
-            clone.includeInTotal = numericTypes.includes(normalizedType);
         }
 
         const placeholderCandidate = clone.placeholder ?? clone.hint ?? null;
@@ -1143,7 +1131,6 @@ export class RollnKeepDialog extends FormApplication {
 
         const parameters = Array.isArray(entry.parameters) ? entry.parameters : [];
         const parameterMap = {};
-        let total = 0;
         let hasEditable = false;
 
         parameters.forEach((parameter, index) => {
@@ -1158,15 +1145,11 @@ export class RollnKeepDialog extends FormApplication {
                 parameter.defaultValue
             );
             parameterMap[parameter.name] = parameter.userValue;
-            if (parameter.includeInTotal !== false && typeof parameter.userValue === "number" && Number.isFinite(parameter.userValue)) {
-                total += parameter.userValue;
-            }
             hasEditable = hasEditable || Boolean(parameter.editable);
         });
 
         entry.parameters = parameters;
         entry.parameterMap = parameterMap;
-        entry.totalValue = total;
         entry.hasEditableParameters = hasEditable;
     }
 
@@ -1228,8 +1211,6 @@ export class RollnKeepDialog extends FormApplication {
         }
 
         const name = typeof parameter.name === "string" && parameter.name.length > 0 ? parameter.name : `param${(index ?? 0) + 1}`;
-        const typeNormalized = typeof parameter.type === "string" ? parameter.type.toLowerCase() : "string";
-        const numericTypes = ["number", "int", "integer", "float", "decimal"];
         const serialized = {
             name,
             label: parameter.label ?? name,
@@ -1241,7 +1222,6 @@ export class RollnKeepDialog extends FormApplication {
             initialValue: foundry.utils.deepClone(
                 parameter.initialValue !== undefined ? parameter.initialValue : parameter.defaultValue ?? null
             ),
-            includeInTotal: parameter.includeInTotal ?? numericTypes.includes(typeNormalized),
             editable: Boolean(parameter.editable),
             min: parameter.min ?? null,
             max: parameter.max ?? null,
@@ -1401,7 +1381,6 @@ export class RollnKeepDialog extends FormApplication {
                     type: "number",
                     defaultValue: Number.isFinite(baseValueCandidate) ? Number(baseValueCandidate) : 0,
                     userValue: Number.isFinite(baseValueCandidate) ? Number(baseValueCandidate) : 0,
-                    includeInTotal: true,
                     editable: false,
                 },
                 normalizedParameters.length,
@@ -1419,7 +1398,6 @@ export class RollnKeepDialog extends FormApplication {
                         type: "number",
                         defaultValue: Number.isFinite(modifierCandidate) ? Number(modifierCandidate) : 0,
                         userValue: Number.isFinite(modifierCandidate) ? Number(modifierCandidate) : 0,
-                        includeInTotal: true,
                         editable: true,
                     },
                     normalizedParameters.length,
@@ -1642,7 +1620,6 @@ export class RollnKeepDialog extends FormApplication {
             finalMacro: entry.finalMacro,
             params: entry.params,
             details: entry.details,
-            totalValue: entry.totalValue,
             parameters: Array.isArray(entry.parameters)
                 ? entry.parameters.map((parameter, index) => this._serializeEffectParameter(parameter, index))
                 : [],
@@ -1938,12 +1915,7 @@ export class RollnKeepDialog extends FormApplication {
         }
 
         const parameterMap = this._getEffectEntryParameterMap(entry);
-        const totalValue = Number.isFinite(entry.totalValue) ? Number(entry.totalValue) : 0;
-
         const macroParameters = foundry.utils.deepClone(parameterMap);
-        if (!Object.prototype.hasOwnProperty.call(macroParameters, "_total")) {
-            macroParameters._total = totalValue;
-        }
 
         try {
             const clonedState = foundry.utils.deepClone(entry.params ?? {});
@@ -1954,7 +1926,6 @@ export class RollnKeepDialog extends FormApplication {
                 entry: foundry.utils.deepClone(entry),
                 effect: this.object.rollEffects?.[entry.effectIndex] ?? null,
                 parameterMap: clonedParameterMap,
-                totalValue,
                 roll: this.roll,
             };
             await macro.execute({ roll: this.roll }, [macroParameters, clonedState, context]);
@@ -2235,7 +2206,6 @@ export class RollnKeepDialog extends FormApplication {
             });
 
             clone.parameterMap = this._getEffectEntryParameterMap(clone);
-            clone.totalValue = Number.isFinite(clone.totalValue) ? Number(clone.totalValue) : 0;
             clone.hasParameters = clone.parameters.length > 0;
             clone.hasFinalMacro = typeof clone.finalMacro === "string" && clone.finalMacro.trim().length > 0;
             return clone;
