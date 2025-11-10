@@ -307,9 +307,14 @@
                 </div>
                 {{/if}}
             </div>
-            <button id="finalize" name="finalize" type="button" {{#if data.submitDisabled}}disabled{{/if}}>
-                {{ localize 'l5r5e.dice.roll_n_keep.bt_strife' }} <i class="fas fa-arrow-circle-right"></i>
-            </button>
+            <div class="rnk-action-buttons">
+                <button id="undo-step" type="button" class="icon pointer-choice" title="{{ localize 'l5r5e.dice.roll_n_keep.undo' }}" {{#ifCond data.currentStep '==' 0}}disabled{{/ifCond}} {{#unless @root.isEditable}}disabled{{/unless}}>
+                    <i class="fas fa-undo-alt"></i>
+                </button>
+                <button id="finalize" name="finalize" type="button" {{#if data.submitDisabled}}disabled{{/if}} {{#unless @root.isEditable}}disabled{{/unless}}>
+                    {{ localize 'l5r5e.dice.roll_n_keep.bt_strife' }} <i class="fas fa-arrow-circle-right"></i>
+                </button>
+            </div>
             {{/if}}
         {{/if}}
     </section>
