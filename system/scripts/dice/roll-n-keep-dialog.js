@@ -1957,7 +1957,7 @@ export class RollnKeepDialog extends FormApplication {
                 totalValue,
                 roll: this.roll,
             };
-            await macro.execute({ roll: this.roll }, [this.roll, macroParameters, clonedState, context]);
+            await macro.execute({ roll: this.roll }, [macroParameters, clonedState, context]);
             return true;
         } catch (error) {
             console.error(`RollnKeepDialog | Error while executing final macro '${entry.finalMacro}'`, error);
