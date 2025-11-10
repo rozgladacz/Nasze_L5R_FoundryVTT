@@ -562,12 +562,9 @@ export class RollnKeepDialog extends FormApplication {
         ) {
             const finalMacroIdentifier = baseEntry.finalMacro.trim();
             baseEntry.finalMacro = finalMacroIdentifier;
-            let derivedLabel = "";
+            let resolvedMacro = null;
             try {
-                const resolvedMacro = await this._resolveMacro(finalMacroIdentifier);
-                if (resolvedMacro?.name) {
-                    derivedLabel = resolvedMacro.name.trim();
-                }
+                resolvedMacro = await this._resolveMacro(finalMacroIdentifier);
             } catch (error) {
                 console.error(
                     `RollnKeepDialog | Failed to resolve macro '${finalMacroIdentifier}' while deriving description`,
@@ -575,15 +572,26 @@ export class RollnKeepDialog extends FormApplication {
                 );
             }
 
-            if (!derivedLabel) {
-                const uuidSegments = finalMacroIdentifier.split(/[./:]/);
-                derivedLabel = uuidSegments[uuidSegments.length - 1] ?? finalMacroIdentifier;
-            }
+            if (resolvedMacro) {
+                let derivedLabel = "";
+                if (typeof resolvedMacro.name === "string" && resolvedMacro.name.trim().length > 0) {
+                    derivedLabel = resolvedMacro.name.trim();
+                }
 
-            derivedLabel = typeof derivedLabel === "string" ? derivedLabel.trim() : "";
+                if (!derivedLabel) {
+                    const macroUuid =
+                        typeof resolvedMacro.uuid === "string" && resolvedMacro.uuid.trim().length > 0
+                            ? resolvedMacro.uuid.trim()
+                            : finalMacroIdentifier;
+                    const uuidSegments = macroUuid.split(/[./:]/);
+                    derivedLabel = uuidSegments[uuidSegments.length - 1] ?? macroUuid;
+                }
 
-            if (derivedLabel) {
-                baseEntry.description = derivedLabel;
+                derivedLabel = typeof derivedLabel === "string" ? derivedLabel.trim() : "";
+
+                if (derivedLabel) {
+                    baseEntry.description = derivedLabel;
+                }
             }
         }
 
