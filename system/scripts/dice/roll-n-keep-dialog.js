@@ -3240,6 +3240,7 @@ export class RollnKeepDialog extends FormApplication {
         }
 
         const rollMode = game.l5r5e.HelpersL5r5e.getRollMode(this._message);
+        const previousAppId = this._message ? this.id : null;
 
         if (this.roll.l5r5e.isInitiativeRoll) {
             let msgOptions = {
@@ -3256,7 +3257,11 @@ export class RollnKeepDialog extends FormApplication {
             this.message = msgOptions.rnkMessage;
             delete msgOptions.rnkMessage;
             if (this._message) {
-                game.l5r5e.sockets.refreshAppId(this.id);
+                if (previousAppId) {
+                    game.l5r5e.sockets.updateMessageIdAndRefresh(previousAppId, this._message.id);
+                } else {
+                    game.l5r5e.sockets.refreshAppId(this.id);
+                }
             }
             return;
         }
