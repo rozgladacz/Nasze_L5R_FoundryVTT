@@ -170,6 +170,13 @@
                 | <i class="i_opportunity"></i> {{localize 'l5r5e.dice.chat.opportunities'}}
                 | <i class="i_strife"></i> {{localize 'l5r5e.dice.chat.strife'}}
             </p>
+            {{#if @root.isEditable}}
+                {{#ifCond data.currentStep '>' 0}}
+                    <button id="undo-step" type="button" class="icon pointer-choice" title="{{ localize 'l5r5e.dice.roll_n_keep.undo' }}">
+                        <i class="fas fa-undo-alt"></i>
+                    </button>
+                {{/ifCond}}
+            {{/if}}
             <button id="finalize" name="finalize" type="button" {{#if data.submitDisabled}}disabled{{/if}}>
                 {{ localize 'l5r5e.dice.roll_n_keep.bt_validate' }} <i class="fas fa-arrow-circle-right"></i>
             </button>
