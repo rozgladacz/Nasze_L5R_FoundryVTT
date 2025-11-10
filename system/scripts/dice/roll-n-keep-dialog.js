@@ -2411,6 +2411,19 @@ export class RollnKeepDialog extends FormApplication {
             ], { jQuery: false });
         }
 
+        const undoStepButton = html.find("#undo-step");
+        const canUseUndoButton = this.isOwner && this.object.currentStep > 0;
+        if (undoStepButton.length) {
+            undoStepButton.prop("disabled", !canUseUndoButton);
+            if (canUseUndoButton) {
+                undoStepButton.on("click", (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    this._undoLastStepChoices();
+                });
+            }
+        }
+
         // *** Everything below here is only needed if the sheet is editable ***
         if (!this.isEditable) {
             return;
