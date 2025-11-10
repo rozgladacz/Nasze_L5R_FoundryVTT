@@ -550,21 +550,47 @@ export class RollnKeepDialog extends FormApplication {
         baseEntry.order = Number.isFinite(baseEntry.order) ? Number(baseEntry.order) : entryIdx;
         baseEntry.key = this._getEffectEntryKey(baseEntry.effectIndex, baseEntry.order);
 
-        if (
-            !baseEntry.description &&
-            typeof baseEntry.finalMacro === "string" &&
-            baseEntry.finalMacro.trim().length > 0
-        ) {
-            const finalMacroIdentifier = baseEntry.finalMacro.trim();
-            baseEntry.finalMacro = finalMacroIdentifier;
+        if (!baseEntry.description && baseEntry.finalMacro) {
             let resolvedMacro = null;
-            try {
-                resolvedMacro = await this._resolveMacro(finalMacroIdentifier);
-            } catch (error) {
-                console.error(
-                    `RollnKeepDialog | Failed to resolve macro '${finalMacroIdentifier}' while deriving description`,
-                    error
-                );
+            let finalMacroIdentifier = null;
+
+            if (baseEntry.finalMacro instanceof Macro) {
+                resolvedMacro = baseEntry.finalMacro;
+                if (
+                    typeof resolvedMacro?.uuid === "string" &&
+                    resolvedMacro.uuid.trim().length > 0
+                ) {
+                    finalMacroIdentifier = resolvedMacro.uuid.trim();
+                } else if (typeof resolvedMacro?.id === "string" && resolvedMacro.id.trim().length > 0) {
+                    finalMacroIdentifier = resolvedMacro.id.trim();
+                }
+            } else if (typeof baseEntry.finalMacro === "string" && baseEntry.finalMacro.trim().length > 0) {
+                finalMacroIdentifier = baseEntry.finalMacro.trim();
+            }
+
+            if (!resolvedMacro && finalMacroIdentifier) {
+                try {
+                    resolvedMacro = await this._resolveMacro(finalMacroIdentifier);
+                } catch (error) {
+                    console.error(
+                        `RollnKeepDialog | Failed to resolve macro '${finalMacroIdentifier}' while deriving description`,
+                        error
+                    );
+                }
+            }
+
+            if (!finalMacroIdentifier && resolvedMacro) {
+                if (typeof resolvedMacro.uuid === "string" && resolvedMacro.uuid.trim().length > 0) {
+                    finalMacroIdentifier = resolvedMacro.uuid.trim();
+                } else if (typeof resolvedMacro.id === "string" && resolvedMacro.id.trim().length > 0) {
+                    finalMacroIdentifier = resolvedMacro.id.trim();
+                } else if (typeof resolvedMacro.name === "string" && resolvedMacro.name.trim().length > 0) {
+                    finalMacroIdentifier = resolvedMacro.name.trim();
+                }
+            }
+
+            if (finalMacroIdentifier) {
+                baseEntry.finalMacro = finalMacroIdentifier;
             }
 
             if (resolvedMacro) {
@@ -577,7 +603,7 @@ export class RollnKeepDialog extends FormApplication {
                     const macroUuid =
                         typeof resolvedMacro.uuid === "string" && resolvedMacro.uuid.trim().length > 0
                             ? resolvedMacro.uuid.trim()
-                            : finalMacroIdentifier;
+                            : finalMacroIdentifier ?? "";
                     const uuidSegments = macroUuid.split(/[./:]/);
                     derivedLabel = uuidSegments[uuidSegments.length - 1] ?? macroUuid;
                 }
