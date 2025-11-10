@@ -1493,13 +1493,10 @@ export class RollnKeepDialog extends FormApplication {
 
         let macroResult;
         try {
-            macroResult = await macro.execute(
-                { roll: this.roll },
-                this.roll,
-                foundry.utils.deepClone(effect?.params ?? {}),
-                foundry.utils.deepClone(this.object.effectStates ?? {}),
-                { effectIndex, effect, roll: this.roll }
-            );
+            const clonedParams = foundry.utils.deepClone(effect?.params ?? {});
+            const clonedStates = foundry.utils.deepClone(this.object.effectStates ?? {});
+            const context = { effectIndex, effect, roll: this.roll };
+            macroResult = await macro.execute({ roll: this.roll }, [this.roll, clonedParams, clonedStates, context]);
         } catch (error) {
             console.error(`RollnKeepDialog | Error while executing macro '${macroIdentifier}'`, error);
             ui.notifications?.error?.(game.i18n.localize("l5r5e.dice.roll_n_keep.effects.macroError"));
@@ -1995,21 +1992,19 @@ export class RollnKeepDialog extends FormApplication {
         }
 
         try {
-            await macro.execute(
-                { roll: this.roll },
-                this.roll,
-                macroParameters,
-                foundry.utils.deepClone(entry.params ?? {}),
-                {
-                    effectIndex: entry.effectIndex,
-                    effectKey: entry.key,
-                    entry: foundry.utils.deepClone(entry),
-                    effect: this.object.rollEffects?.[entry.effectIndex] ?? null,
-                    effectStates: foundry.utils.deepClone(this.object.effectStates ?? {}),
-                    parameterMap: foundry.utils.deepClone(parameterMap),
-                    totalValue,
-                }
-            );
+            const clonedState = foundry.utils.deepClone(entry.params ?? {});
+            const clonedEffectStates = foundry.utils.deepClone(this.object.effectStates ?? {});
+            const clonedParameterMap = foundry.utils.deepClone(parameterMap);
+            const context = {
+                effectIndex: entry.effectIndex,
+                effectKey: entry.key,
+                entry: foundry.utils.deepClone(entry),
+                effect: this.object.rollEffects?.[entry.effectIndex] ?? null,
+                effectStates: clonedEffectStates,
+                parameterMap: clonedParameterMap,
+                totalValue,
+            };
+            await macro.execute({ roll: this.roll }, [this.roll, macroParameters, clonedState, context]);
             return true;
         } catch (error) {
             console.error(`RollnKeepDialog | Error while executing final macro '${entry.finalMacro}'`, error);
