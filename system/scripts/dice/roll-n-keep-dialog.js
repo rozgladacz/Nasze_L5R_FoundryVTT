@@ -3230,19 +3230,21 @@ export class RollnKeepDialog extends FormApplication {
     }
 
     /**
-     * Send the new roll in chat and delete the old message
+     * Synchronize the chat message with the current roll state.
      * @returns {Promise<void>}
      * @private
      */
     async _toChatMessage() {
-        // Keep old Ids
-        const appOldId = this.id;
-        const msgOldId = this._message.id;
+        if (!this.roll) {
+            return;
+        }
+
+        const rollMode = game.l5r5e.HelpersL5r5e.getRollMode(this._message);
 
         if (this.roll.l5r5e.isInitiativeRoll) {
             let msgOptions = {
                 rnkRoll: this.roll,
-                rollMode: game.l5r5e.HelpersL5r5e.getRollMode(this._message),
+                rollMode,
             };
 
             await this.roll.l5r5e.actor.rollInitiative({
@@ -3251,32 +3253,53 @@ export class RollnKeepDialog extends FormApplication {
                     messageOptions: msgOptions,
                 },
             });
-            // Adhesive tape to get the message :/
             this.message = msgOptions.rnkMessage;
             delete msgOptions.rnkMessage;
-        } else {
-            // Send it to chat, switch to new message
-            this.message = await this.roll.toMessage(
-                {},
-                { rollMode: game.l5r5e.HelpersL5r5e.getRollMode(this._message) }
-            );
-        }
-
-        // Refresh viewers
-        if (this._message) {
-            game.l5r5e.sockets.updateMessageIdAndRefresh(appOldId, this._message.id);
-        }
-
-        // Delete old chat message related to this series
-        if (game.settings.get(CONFIG.l5r5e.namespace, "rnk-deleteOldMessage")) {
-            if (game.user.isFirstGM) {
-                const message = game.messages.get(msgOldId);
-                if (message) {
-                    message.delete();
-                }
-            } else {
-                game.l5r5e.sockets.deleteChatMessage(msgOldId);
+            if (this._message) {
+                game.l5r5e.sockets.refreshAppId(this.id);
             }
+            return;
+        }
+
+        if (!this._message) {
+            this.message = await this.roll.toMessage({}, { rollMode });
+            return;
+        }
+
+        const message = this._message;
+        const updateData = {
+            content: this.roll.l5r5e.dicesTypes.l5r ? await this.roll.render({}) : this.roll.total,
+            rolls: [this.roll.toJSON()],
+        };
+
+        // Preserve existing message settings for the selected roll mode.
+        const modeData = ChatMessage.applyRollMode(
+            {
+                whisper: Array.isArray(message.whisper) ? Array.from(message.whisper) : [],
+                blind: message.blind,
+            },
+            rollMode
+        );
+        if (modeData.whisper !== undefined) {
+            updateData.whisper = modeData.whisper;
+        }
+        if (modeData.blind !== undefined) {
+            updateData.blind = modeData.blind;
+        }
+
+        // Preserve existing flags to retain ancillary data (such as card state or RnK metadata).
+        if (message.flags && Object.keys(message.flags).length > 0) {
+            updateData.flags = foundry.utils.deepClone(message.flags);
+        }
+
+        await message.update(updateData, { diff: false });
+
+        // Refresh local cached message reference and roll data.
+        this.message = game.messages.get(message.id);
+        if (this._message) {
+            this._message._rolls = [this.roll];
+            this._message.rolls = [this.roll];
+            game.l5r5e.sockets.refreshAppId(this.id);
         }
     }
 
