@@ -1946,7 +1946,7 @@ export class RollnKeepDialog extends FormApplication {
         }
 
         try {
-            const clonedState = foundry.utils.deepClone(entry.params ?? {});
+            const clonedParams = foundry.utils.deepClone(entry.params ?? {});
             const clonedParameterMap = foundry.utils.deepClone(parameterMap);
             const context = {
                 effectIndex: entry.effectIndex,
@@ -1956,8 +1956,9 @@ export class RollnKeepDialog extends FormApplication {
                 parameterMap: clonedParameterMap,
                 totalValue,
                 roll: this.roll,
+                params: clonedParams,
             };
-            await macro.execute({ roll: this.roll }, [macroParameters, clonedState, context]);
+            await macro.execute({ roll: this.roll }, [macroParameters, context]);
             return true;
         } catch (error) {
             console.error(`RollnKeepDialog | Error while executing final macro '${entry.finalMacro}'`, error);
