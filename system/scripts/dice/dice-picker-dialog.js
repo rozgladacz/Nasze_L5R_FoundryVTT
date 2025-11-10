@@ -1063,7 +1063,6 @@ export class DicePickerDialog extends FormApplication {
             roll.l5r5e.actions = foundry.utils.deepClone(this.object.actions);
             roll.l5r5e.rollEffects = foundry.utils.deepClone(this.object.rollEffects);
             roll.l5r5e.effectResults = [];
-            roll.l5r5e.effectStates = {};
             roll.l5r5e.effectParameterDefs = foundry.utils.deepClone(this.object.effectParameterDefs ?? {});
             roll.l5r5e.effectParameterValues = foundry.utils.deepClone(this.object.effectParameterValues ?? {});
             roll.l5r5e.effectParameterModifiers = foundry.utils.deepClone(this.object.effectParameterModifiers ?? {});

@@ -132,11 +132,6 @@ export class CombatL5r5e extends Combat {
                     roll.l5r5e.skillAssistance = messageOptions.skillAssistance || 0;
                     roll.l5r5e.rollEffects = foundry.utils.deepClone(messageOptions.rollEffects ?? []);
                     roll.l5r5e.effectResults = foundry.utils.deepClone(messageOptions.effectResults ?? []);
-                    roll.l5r5e.effectStates = foundry.utils.deepClone(
-                        messageOptions.effectStates && typeof messageOptions.effectStates === "object"
-                            ? messageOptions.effectStates
-                            : {}
-                    );
                     roll.l5r5e.effectParameterDefs = foundry.utils.deepClone(
                         messageOptions.effectParameterDefs && typeof messageOptions.effectParameterDefs === "object"
                             ? messageOptions.effectParameterDefs

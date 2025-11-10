@@ -41,7 +41,6 @@ export class RollnKeepDialog extends FormApplication {
         dicesList: [[]],
         rollEffects: [],
         effectResults: [],
-        effectStates: {},
         effectEntries: [],
         effectParameterDefs: {},
         effectParameterValues: {},
@@ -167,17 +166,11 @@ export class RollnKeepDialog extends FormApplication {
         if (!sourceRoll) {
             this.object.rollEffects = [];
             this.object.effectResults = [];
-            this.object.effectStates = {};
             return;
         }
 
         this.object.rollEffects = foundry.utils.deepClone(sourceRoll.l5r5e?.rollEffects ?? []);
         this.object.effectResults = foundry.utils.deepClone(sourceRoll.l5r5e?.effectResults ?? []);
-        this.object.effectStates = foundry.utils.deepClone(
-            sourceRoll.l5r5e?.effectStates && typeof sourceRoll.l5r5e.effectStates === "object"
-                ? sourceRoll.l5r5e.effectStates
-                : {}
-        );
         this.object.effectParameterDefs = foundry.utils.deepClone(
             sourceRoll.l5r5e?.effectParameterDefs && typeof sourceRoll.l5r5e.effectParameterDefs === "object"
                 ? sourceRoll.l5r5e.effectParameterDefs
@@ -1476,62 +1469,37 @@ export class RollnKeepDialog extends FormApplication {
      * Execute a roll effect input macro and normalize its result.
      * @param {object} effect
      * @param {number} effectIndex
-     * @returns {Promise<{entries: unknown[], state: object|null}>}
+     * @returns {Promise<unknown[]>}
      * @private
      */
     async _executeEffectInputMacro(effect, effectIndex) {
         const macroIdentifier = effect?.macro ?? effect?.inputMacro ?? null;
         if (!macroIdentifier || !this.roll) {
-            return { entries: [], state: null };
+            return [];
         }
 
         const macro = await this._resolveMacro(macroIdentifier);
         if (!macro) {
             console.warn(`RollnKeepDialog | Unable to resolve input macro '${macroIdentifier}' for effect index ${effectIndex}.`);
-            return { entries: [], state: null };
+            return [];
         }
 
         let macroResult;
         try {
             const clonedParams = foundry.utils.deepClone(effect?.params ?? {});
-            const clonedStates = foundry.utils.deepClone(this.object.effectStates ?? {});
             const context = { effectIndex, effect, roll: this.roll };
-            macroResult = await macro.execute({ roll: this.roll }, [this.roll, clonedParams, clonedStates, context]);
+            macroResult = await macro.execute({ roll: this.roll }, [clonedParams, context]);
         } catch (error) {
             console.error(`RollnKeepDialog | Error while executing macro '${macroIdentifier}'`, error);
             ui.notifications?.error?.(game.i18n.localize("l5r5e.dice.roll_n_keep.effects.macroError"));
-            return { entries: [], state: null };
+            return [];
         }
 
-        let entries = [];
-        let newState = null;
-
-        if (Array.isArray(macroResult)) {
-            entries = macroResult;
-        } else if (typeof macroResult === "string") {
-            entries = macroResult
-                .split(/\r?\n/g)
-                .map((line) => line.trim())
-                .filter((line) => line.length > 0);
-        } else if (macroResult && typeof macroResult === "object") {
-            if (Array.isArray(macroResult.entries)) {
-                entries = macroResult.entries;
-            } else if (Array.isArray(macroResult.lines)) {
-                entries = macroResult.lines;
-            } else if (Array.isArray(macroResult.results)) {
-                entries = macroResult.results;
-            } else if (macroResult.entry || macroResult.line) {
-                entries = [macroResult.entry ?? macroResult.line];
-            } else {
-                entries = [macroResult];
-            }
-
-            if (macroResult.state && typeof macroResult.state === "object") {
-                newState = macroResult.state;
-            }
+        if (!Array.isArray(macroResult)) {
+            return [];
         }
 
-        return { entries, state: newState };
+        return macroResult;
     }
 
     /**
@@ -1549,7 +1517,6 @@ export class RollnKeepDialog extends FormApplication {
 
         const updatedEntries = new Map();
         const staleKeys = new Set(existingMap.keys());
-        let statesChanged = false;
         const frozenStatuses = new Set([
             RollnKeepDialog.EFFECT_ENTRY_STATUS.rejected,
             RollnKeepDialog.EFFECT_ENTRY_STATUS.triggered,
@@ -1560,15 +1527,7 @@ export class RollnKeepDialog extends FormApplication {
         if (canGenerate && Array.isArray(this.object.rollEffects) && this.object.rollEffects.length > 0) {
             for (let effectIndex = 0; effectIndex < this.object.rollEffects.length; effectIndex += 1) {
                 const effect = this.object.rollEffects[effectIndex];
-                const { entries: macroEntries, state: newState } = await this._executeEffectInputMacro(effect, effectIndex);
-
-                if (newState) {
-                    const beforeState = JSON.stringify(this.object.effectStates ?? {});
-                    this.object.effectStates = foundry.utils.mergeObject(this.object.effectStates ?? {}, newState, {
-                        inplace: false,
-                    });
-                    statesChanged = statesChanged || beforeState !== JSON.stringify(this.object.effectStates ?? {});
-                }
+                const macroEntries = await this._executeEffectInputMacro(effect, effectIndex);
 
                 const normalizedEntries = Array.isArray(macroEntries) ? macroEntries : [];
                 for (let entryIdx = 0; entryIdx < normalizedEntries.length; entryIdx += 1) {
@@ -1661,11 +1620,7 @@ export class RollnKeepDialog extends FormApplication {
 
         const resultsChanged = this._persistEffectEntries();
 
-        if (statesChanged && this.roll?.l5r5e) {
-            this.roll.l5r5e.effectStates = foundry.utils.deepClone(this.object.effectStates ?? {});
-        }
-
-        if ((resultsChanged || statesChanged) && canGenerate) {
+        if (resultsChanged && canGenerate) {
             await this._toChatMessage();
         }
     }
@@ -1763,7 +1718,6 @@ export class RollnKeepDialog extends FormApplication {
 
         if (this.roll?.l5r5e) {
             this.roll.l5r5e.effectResults = foundry.utils.deepClone(serialized);
-            this.roll.l5r5e.effectStates = foundry.utils.deepClone(this.object.effectStates ?? {});
             this.roll.l5r5e.effectParameterDefs = foundry.utils.deepClone(defs);
             this.roll.l5r5e.effectParameterValues = foundry.utils.deepClone(values);
             this.roll.l5r5e.effectParameterModifiers = foundry.utils.deepClone(modifiers);
@@ -1993,16 +1947,15 @@ export class RollnKeepDialog extends FormApplication {
 
         try {
             const clonedState = foundry.utils.deepClone(entry.params ?? {});
-            const clonedEffectStates = foundry.utils.deepClone(this.object.effectStates ?? {});
             const clonedParameterMap = foundry.utils.deepClone(parameterMap);
             const context = {
                 effectIndex: entry.effectIndex,
                 effectKey: entry.key,
                 entry: foundry.utils.deepClone(entry),
                 effect: this.object.rollEffects?.[entry.effectIndex] ?? null,
-                effectStates: clonedEffectStates,
                 parameterMap: clonedParameterMap,
                 totalValue,
+                roll: this.roll,
             };
             await macro.execute({ roll: this.roll }, [this.roll, macroParameters, clonedState, context]);
             return true;
@@ -3124,7 +3077,6 @@ export class RollnKeepDialog extends FormApplication {
                 l5r5e: {
                     rollEffects: foundry.utils.deepClone(this.object.rollEffects),
                     effectResults: foundry.utils.deepClone(this.object.effectResults),
-                    effectStates: foundry.utils.deepClone(this.object.effectStates),
                     effectParameterDefs: foundry.utils.deepClone(this.object.effectParameterDefs ?? {}),
                     effectParameterValues: foundry.utils.deepClone(this.object.effectParameterValues ?? {}),
                     effectParameterModifiers: foundry.utils.deepClone(this.object.effectParameterModifiers ?? {}),
@@ -3244,7 +3196,6 @@ export class RollnKeepDialog extends FormApplication {
         };
         roll.l5r5e.rollEffects = foundry.utils.deepClone(this.object.rollEffects);
         roll.l5r5e.effectResults = foundry.utils.deepClone(this.object.effectResults);
-        roll.l5r5e.effectStates = foundry.utils.deepClone(this.object.effectStates);
         roll.l5r5e.effectParameterDefs = foundry.utils.deepClone(this.object.effectParameterDefs ?? {});
         roll.l5r5e.effectParameterValues = foundry.utils.deepClone(this.object.effectParameterValues ?? {});
         roll.l5r5e.effectParameterModifiers = foundry.utils.deepClone(this.object.effectParameterModifiers ?? {});
