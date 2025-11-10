@@ -1484,6 +1484,7 @@ export class RollnKeepDialog extends FormApplication {
         let macroResult;
         try {
             macroResult = await macro.execute(
+                { roll: this.roll },
                 this.roll,
                 foundry.utils.deepClone(effect?.params ?? {}),
                 foundry.utils.deepClone(this.object.effectStates ?? {}),
@@ -1985,6 +1986,7 @@ export class RollnKeepDialog extends FormApplication {
 
         try {
             await macro.execute(
+                { roll: this.roll },
                 this.roll,
                 macroParameters,
                 foundry.utils.deepClone(entry.params ?? {}),
