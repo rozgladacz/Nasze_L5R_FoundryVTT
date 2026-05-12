@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk '-F\"' '/\"_id\"/ {for\\(i=1;i<=NF;i++\\) if\\($i==\"_id\"\\) {print $\\(i+2\\); break}}' 'D:/OneDrive - KBJ S.A/Dokumenty/GitHub/L5R-FoundryVTT/system/packs/__TRACKED_VAR__')",
+      "Bash(awk '-F\"' '/\"_id\"/ {for\\(i=1;i<=NF;i++\\) if\\($i==\"_id\"\\) {id=$\\(i+2\\); break}; for\\(i=1;i<=NF;i++\\) if\\($i==\"name\"\\) {print id\" -> \"$\\(i+2\\); break}}' 'D:/OneDrive - KBJ S.A/Dokumenty/GitHub/L5R-FoundryVTT/system/packs/core-macros.db')",
+      "Bash(jq --version)",
+      "Bash(python -c ' *)",
+      "Read(//tmp/**)",
+      "Bash(python .tmp_rewrite_macros.py)",
+      "Bash(node --check system/scripts/dice/roll-n-keep-dialog.js)",
+      "Bash(python -c \"import json; json.load\\(open\\('system/system.json','r',encoding='utf-8'\\)\\); print\\('JSON OK'\\)\")",
+      "Bash(rm -f system/packs/core-macros-test-out-prep.db .tmp_rewrite_macros.py)",
+      "Bash(git diff *)"
+    ]
+  }
+}

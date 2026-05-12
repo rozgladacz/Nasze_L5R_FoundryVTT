@@ -18,6 +18,7 @@ import { RingDie } from "./dice/dietype/ring-die.js";
 import { RollL5r5e } from "./dice/roll.js";
 import { DicePickerDialog } from "./dice/dice-picker-dialog.js";
 import { RollnKeepDialog } from "./dice/roll-n-keep-dialog.js";
+import { MacroHelpersL5r5e } from "./dice/macro-helpers.js";
 import { CombatL5r5e } from "./combat.js";
 // Items
 import { ItemL5r5e } from "./item.js";
@@ -97,6 +98,7 @@ Hooks.once("init", async () => {
         storage: new Storage(),
         sockets: new SocketHandlerL5r5e(),
         migrations: MigrationL5r5e,
+        macros: MacroHelpersL5r5e,
     };
 
     // Register custom system settings

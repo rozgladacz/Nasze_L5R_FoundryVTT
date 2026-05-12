@@ -118,7 +118,6 @@
                         "core-macros-test",
                         "core-macros-test-in",
                         "core-macros-test-out",
-						"core-macros-test-out-prep",
                         "core-macros-action"
                     ]
                 }
@@ -367,13 +366,6 @@
             "name": "core-macros-test-out",
             "label": "L5R5E Macros: Tests outputs",
             "path": "packs/core-macros-test-out.db",
-            "type": "Macro",
-            "system": "l5r5e"
-        },
-		{
-            "name": "core-macros-test-out-prep",
-            "label": "L5R5E Macros: Tests outputs prepartion",
-            "path": "packs/core-macros-test-out-prep.db",
             "type": "Macro",
             "system": "l5r5e"
         },
